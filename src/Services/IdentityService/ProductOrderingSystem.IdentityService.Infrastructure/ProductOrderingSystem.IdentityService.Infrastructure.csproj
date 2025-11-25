@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" />
+    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProductOrderingSystem.IdentityService.Domain\ProductOrderingSystem.IdentityService.Domain.csproj" />
+    <ProjectReference Include="..\ProductOrderingSystem.IdentityService.Application\ProductOrderingSystem.IdentityService.Application.csproj" />
+  </ItemGroup>
+
+</Project>

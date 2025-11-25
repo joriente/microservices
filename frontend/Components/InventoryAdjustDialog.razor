@@ -1,0 +1,124 @@
+@inject IInventoryService InventoryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">
+            @(IsAddition ? "Add Stock" : "Remove Stock") - @ProductName
+        </MudText>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Current Stock</MudText>
+                    <MudText Typo="Typo.h6">@InventoryItem.Quantity</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Available</MudText>
+                    <MudText Typo="Typo.h6">@InventoryItem.AvailableQuantity</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudForm @ref="form" @bind-IsValid="@isValid">
+            <MudNumericField @bind-Value="quantity"
+                            Label="Quantity"
+                            Variant="Variant.Outlined"
+                            Min="1"
+                            Required="true"
+                            HelperText="@(IsAddition ? "Amount to add" : "Amount to remove")"
+                            Adornment="Adornment.Start"
+                            AdornmentIcon="@(IsAddition ? Icons.Material.Filled.Add : Icons.Material.Filled.Remove)"
+                            AdornmentColor="@(IsAddition ? Color.Success : Color.Warning)" />
+
+            <MudTextField @bind-Value="reason"
+                         Label="Reason"
+                         Variant="Variant.Outlined"
+                         Lines="3"
+                         Required="true"
+                         Class="mt-3"
+                         HelperText="Provide a reason for this adjustment (e.g., 'Received shipment', 'Damaged items')" />
+
+            @if (!IsAddition && quantity > InventoryItem.AvailableQuantity)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-3">
+                    Warning: Removing @quantity items would result in negative available stock. 
+                    Current available: @InventoryItem.AvailableQuantity
+                </MudAlert>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit" 
+                  Variant="Variant.Filled" 
+                  Color="@(IsAddition ? Color.Success : Color.Warning)"
+                  Disabled="@(!isValid || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                @(IsAddition ? "Add Stock" : "Remove Stock")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    MudBlazor.IDialogReference MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Inventory InventoryItem { get; set; } = default!;
+
+    [Parameter]
+    public bool IsAddition { get; set; }
+
+    [Parameter]
+    public string ProductName { get; set; } = "";
+
+    private MudForm form = default!;
+    private bool isValid;
+    private bool isProcessing;
+    private int quantity = 1;
+    private string reason = "";
+
+    private async Task Submit()
+    {
+        await form.Validate();
+        if (!isValid) return;
+
+        isProcessing = true;
+        try
+        {
+            var request = new InventoryAdjustmentRequest(
+                ProductId: InventoryItem.ProductId,
+                Quantity: IsAddition ? quantity : -quantity,
+                Reason: reason
+            );
+
+            await InventoryService.AdjustInventoryAsync(request);
+            
+            Snackbar.Add(
+                $"Successfully {(IsAddition ? "added" : "removed")} {quantity} units", 
+                Severity.Success);
+            
+            MudDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to adjust inventory: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Close();
+    }
+}

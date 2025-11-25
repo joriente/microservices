@@ -1,0 +1,103 @@
+# Authentication Flow Testing
+# Run these requests in order to test the complete authentication flow
+
+### Variables
+@apiGateway = http://localhost:5555
+@email = testuser@example.com
+@password = Test123!@#
+
+### 1. Register a new user
+# @name register
+POST {{apiGateway}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 2. Login to get JWT token
+# @name login
+POST {{apiGateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Extract token from login response
+@token = {{login.response.body.token}}
+
+### 3. Get current user info (requires authentication)
+GET {{apiGateway}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 4. Try to get current user WITHOUT token (should return 401)
+GET {{apiGateway}}/api/auth/me
+
+### 5. Get all products (public endpoint - no auth required)
+GET {{apiGateway}}/api/products
+
+### 6. Create a new product WITH authentication (should succeed)
+POST {{apiGateway}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Test Product",
+  "description": "A test product created via API",
+  "price": 99.99,
+  "quantity": 10
+}
+
+### 7. Try to create a product WITHOUT authentication (should return 401)
+POST {{apiGateway}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Product",
+  "description": "This should fail",
+  "price": 1.00,
+  "quantity": 1
+}
+
+### 8. Get all orders (public endpoint)
+GET {{apiGateway}}/api/orders
+
+### 9. Create a new order WITH authentication (should succeed)
+POST {{apiGateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "customerName": "Test Customer",
+  "orderDate": "2025-10-16T12:00:00Z",
+  "items": [
+    {
+      "productId": "test-product-123",
+      "productName": "Test Product",
+      "quantity": 2,
+      "price": 99.99
+    }
+  ]
+}
+
+### 10. Try to create an order WITHOUT authentication (should return 401)
+POST {{apiGateway}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "Unauthorized Customer",
+  "orderDate": "2025-10-16T12:00:00Z",
+  "items": [
+    {
+      "productId": "test-product",
+      "productName": "Test",
+      "quantity": 1,
+      "price": 1.00
+    }
+  ]
+}
+
+###

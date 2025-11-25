@@ -1,0 +1,119 @@
+@page "/login"
+@inject IAuthService AuthService
+@inject CustomAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Login - Product Ordering System</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="3" Class="pa-6">
+        <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">
+            <MudIcon Icon="@Icons.Material.Filled.Login" Size="Size.Large" />
+            Login
+        </MudText>
+        
+        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+            Sign in to your account to continue shopping
+        </MudText>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            
+            <MudTextField @bind-Value="_loginModel.EmailOrUsername"
+                          Label="Username or Email"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Username or email is required"
+                          Class="mb-4"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Person" />
+            
+            <MudTextField @bind-Value="_loginModel.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Password is required"
+                          Class="mb-4"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Lock" />
+            
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@_isLoading"
+                       Class="mb-3">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                }
+            </MudButton>
+        </EditForm>
+
+        <MudDivider Class="my-4" />
+        
+        <MudText Typo="Typo.body2" Align="Align.Center">
+            Don't have an account?
+            <MudLink Href="/register" Color="Color.Primary">Register here</MudLink>
+        </MudText>
+
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-2">
+            <MudLink Href="/products" Color="Color.Secondary">Continue browsing without login</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private LoginModel _loginModel = new();
+    private bool _isLoading = false;
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        
+        try
+        {
+            var request = new LoginRequest(_loginModel.EmailOrUsername!, _loginModel.Password!);
+            var response = await AuthService.LoginAsync(request);
+
+            if (response != null)
+            {
+                await AuthStateProvider.MarkUserAsAuthenticated(response.Token);
+                Snackbar.Add($"Welcome back, {response.User.FirstName}!", Severity.Success);
+                
+                // Redirect to return URL or home page
+                Navigation.NavigateTo(string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl);
+            }
+            else
+            {
+                Snackbar.Add("Invalid username or password", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Login failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        public string? EmailOrUsername { get; set; }
+        public string? Password { get; set; }
+    }
+}

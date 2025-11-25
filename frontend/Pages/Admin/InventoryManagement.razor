@@ -1,0 +1,236 @@
+@page "/admin/inventory"
+@using Microsoft.AspNetCore.Authorization
+@inject IInventoryService InventoryService
+@inject IProductService ProductService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Manage Inventory - Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Warehouse" Class="mr-2" />
+            Inventory Management
+        </MudText>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Refresh"
+                  OnClick="LoadInventory">
+            Refresh
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="searchQuery" 
+                             Label="Search by product name" 
+                             Variant="Variant.Outlined"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             OnKeyUp="@(e => OnSearchKeyUp())" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect @bind-Value="stockFilter" Label="Stock Level" Variant="Variant.Outlined" T="string">
+                    <MudSelectItem Value="@("")">All Levels</MudSelectItem>
+                    <MudSelectItem Value="@("low")">Low Stock (≤ 10)</MudSelectItem>
+                    <MudSelectItem Value="@("out")">Out of Stock</MudSelectItem>
+                    <MudSelectItem Value="@("normal")">Normal Stock (&gt; 10)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="ApplyFilters"
+                          FullWidth="true"
+                          Class="mt-1">
+                    Apply Filters
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="2">
+            <MudTable Items="@filteredInventory" 
+                      Hover="true" 
+                      Striped="true" 
+                      Dense="true">
+                <HeaderContent>
+                    <MudTh>Product</MudTh>
+                    <MudTh>Current Stock</MudTh>
+                    <MudTh>Reserved</MudTh>
+                    <MudTh>Available</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Last Updated</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Product">
+                        <MudText Typo="Typo.body2"><strong>@GetProductName(context.ProductId)</strong></MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @context.ProductId</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Current Stock">
+                        <MudText Typo="Typo.body1"><strong>@context.Quantity</strong></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Reserved">
+                        <MudText Typo="Typo.body2">@context.ReservedQuantity</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Available">
+                        <MudText Typo="Typo.body2">@context.AvailableQuantity</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.Quantity == 0)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Error" T="string">Out of Stock</MudChip>
+                        }
+                        else if (context.AvailableQuantity <= 10)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Warning" T="string">Low Stock</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Success" T="string">In Stock</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Last Updated">
+                        <MudText Typo="Typo.caption">@context.LastUpdated.ToString("g")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                      Color="Color.Success" 
+                                      Size="Size.Small"
+                                      OnClick="() => OpenAdjustDialog(context, true)"
+                                      aria-label="Add stock" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove" 
+                                      Color="Color.Warning" 
+                                      Size="Size.Small"
+                                      OnClick="() => OpenAdjustDialog(context, false)"
+                                      aria-label="Remove stock" />
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                </PagerContent>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<Inventory> inventory = new();
+    private List<Inventory> filteredInventory = new();
+    private Dictionary<Guid, string> productNames = new();
+    private bool isLoading = true;
+    private string searchQuery = "";
+    private string stockFilter = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInventory();
+    }
+
+    private async Task LoadInventory()
+    {
+        isLoading = true;
+        try
+        {
+            inventory = await InventoryService.GetAllInventoryAsync() ?? new();
+            
+            // Load product names
+            var productIds = inventory.Select(i => i.ProductId).Distinct();
+            foreach (var productId in productIds)
+            {
+                try
+                {
+                    var searchRequest = new ProductSearchRequest(Page: 1, PageSize: 1);
+                    var result = await ProductService.SearchProductsAsync(searchRequest);
+                    var product = result?.Products.FirstOrDefault(p => p.Id == productId);
+                    if (product != null)
+                    {
+                        productNames[productId] = product.Name;
+                    }
+                }
+                catch
+                {
+                    productNames[productId] = "Unknown Product";
+                }
+            }
+
+            ApplyLocalFilters();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load inventory: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnSearchKeyUp()
+    {
+        await Task.Delay(300);
+        ApplyLocalFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        ApplyLocalFilters();
+    }
+
+    private void ApplyLocalFilters()
+    {
+        filteredInventory = inventory;
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredInventory = filteredInventory
+                .Where(i => GetProductName(i.ProductId).Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        // Apply stock level filter
+        filteredInventory = stockFilter switch
+        {
+            "low" => filteredInventory.Where(i => i.AvailableQuantity > 0 && i.AvailableQuantity <= 10).ToList(),
+            "out" => filteredInventory.Where(i => i.Quantity == 0).ToList(),
+            "normal" => filteredInventory.Where(i => i.AvailableQuantity > 10).ToList(),
+            _ => filteredInventory
+        };
+    }
+
+    private string GetProductName(Guid productId)
+    {
+        return productNames.TryGetValue(productId, out var name) ? name : "Loading...";
+    }
+
+    private async Task OpenAdjustDialog(Inventory item, bool isAddition)
+    {
+        var parameters = new DialogParameters
+        {
+            ["InventoryItem"] = item,
+            ["IsAddition"] = isAddition,
+            ["ProductName"] = GetProductName(item.ProductId)
+        };
+
+        var dialog = await DialogService.ShowAsync<InventoryAdjustDialog>(
+            isAddition ? "Add Stock" : "Remove Stock", 
+            parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadInventory();
+        }
+    }
+}

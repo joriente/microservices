@@ -1,0 +1,108 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject ICartService CartService
+
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6">Product Ordering System</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudBadge Content="@_cartItemCount" Color="Color.Error" Overlap="true" Visible="@(_cartItemCount > 0)">
+                    <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart" Color="Color.Inherit" Href="/cart" />
+                </MudBadge>
+                <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Person">@context.User.Identity?.Name</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings" Href="/profile">Profile</MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Receipt" Href="/orders">My Orders</MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="Logout">Logout</MudMenuItem>
+                </MudMenu>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" Href="/login" Variant="Variant.Text">Login</MudButton>
+                <MudButton Color="Color.Primary" Href="/register" Variant="Variant.Filled">Register</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+        <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
+    </MudAppBar>
+    
+    <MudDrawer @bind-Open="@_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+    
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+    private MudThemeProvider? _mudThemeProvider;
+    private int _cartItemCount = 0;
+    private System.Threading.Timer? _cartTimer;
+
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private CustomAuthStateProvider AuthStateProvider { get; set; } = default!;
+
+    private string DarkLightModeButtonIcon => _isDarkMode switch
+    {
+        true => Icons.Material.Rounded.AutoMode,
+        false => Icons.Material.Outlined.DarkMode,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Start polling cart count every 30 seconds
+        _cartTimer = new System.Threading.Timer(async _ => await UpdateCartCount(), null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        await UpdateCartCount();
+    }
+
+    private async Task UpdateCartCount()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated ?? false)
+            {
+                var cart = await CartService.GetCartAsync();
+                _cartItemCount = cart?.TotalItems ?? 0;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch
+        {
+            // Silently fail - cart count is not critical
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void DarkModeToggle()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    private async Task Logout()
+    {
+        await AuthStateProvider.MarkUserAsLoggedOut();
+        Navigation.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        _cartTimer?.Dispose();
+    }
+}

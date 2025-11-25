@@ -1,0 +1,187 @@
+@page "/admin/customers"
+@using Microsoft.AspNetCore.Authorization
+@inject ICustomerService CustomerService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Manage Customers - Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+            Customer Management
+        </MudText>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Refresh"
+                  OnClick="LoadCustomers">
+            Refresh
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="searchQuery" 
+                             Label="Search by name or email" 
+                             Variant="Variant.Outlined"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             OnKeyUp="@(e => OnSearchKeyUp())" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="ApplyFilters"
+                          FullWidth="true"
+                          Class="mt-1">
+                    Apply Filters
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="2">
+            <MudTable Items="@customers" 
+                      Hover="true" 
+                      Striped="true" 
+                      Dense="true">
+                <HeaderContent>
+                    <MudTh>Customer</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Phone</MudTh>
+                    <MudTh>Address</MudTh>
+                    <MudTh>Registered</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Customer">
+                        <MudText Typo="Typo.body2"><strong>@context.FullName</strong></MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @context.Id</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Email">
+                        <MudText Typo="Typo.body2">@context.Email</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Phone">
+                        <MudText Typo="Typo.body2">@(context.PhoneNumber ?? "N/A")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Address">
+                        @if (!string.IsNullOrEmpty(context.Address))
+                        {
+                            <MudText Typo="Typo.body2">@context.Address</MudText>
+                            @if (!string.IsNullOrEmpty(context.City) && !string.IsNullOrEmpty(context.State))
+                            {
+                                <MudText Typo="Typo.caption">@context.City, @context.State @context.ZipCode</MudText>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">No address</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Registered">
+                        <MudText Typo="Typo.caption">@context.CreatedAt.ToString("d")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                      Color="Color.Primary" 
+                                      Size="Size.Small"
+                                      OnClick="() => ViewCustomerDetails(context)"
+                                      aria-label="View details" />
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" 
+                                  RowsPerPageString="Customers per page:"
+                                  InfoFormat="{first_item}-{last_item} of {all_items}" />
+                </PagerContent>
+            </MudTable>
+        </MudPaper>
+
+        @if (paginationData != null && paginationData.TotalPages > 1)
+        {
+            <MudPaper Class="pa-4 mt-4 d-flex justify-center">
+                <MudPagination Count="@paginationData.TotalPages" 
+                              Selected="@currentPage" 
+                              SelectedChanged="@OnPageChanged"
+                              BoundaryCount="2"
+                              MiddleCount="3" />
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<Customer> customers = new();
+    private PaginationMetadata? paginationData;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private int pageSize = 25;
+    private string searchQuery = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await CustomerService.GetCustomersAsync(currentPage, pageSize);
+            
+            if (result != null)
+            {
+                customers = result.Customers;
+                paginationData = result.PaginationData;
+            }
+            else
+            {
+                customers = new();
+                paginationData = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load customers: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadCustomers();
+    }
+
+    private async Task OnSearchKeyUp()
+    {
+        // Debounce search
+        await Task.Delay(300);
+        currentPage = 1;
+        await LoadCustomers();
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadCustomers();
+    }
+
+    private void ViewCustomerDetails(Customer customer)
+    {
+        Snackbar.Add($"Viewing details for {customer.FullName}", Severity.Info);
+        // TODO: Implement customer details dialog or navigate to details page
+    }
+}

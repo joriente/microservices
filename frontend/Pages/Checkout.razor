@@ -1,0 +1,458 @@
+@page "/checkout"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject ICartService CartService
+@inject IOrderService OrderService
+@inject IPaymentService PaymentService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Authorize]
+
+<PageTitle>Checkout</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Payment" Class="mr-2" />
+        Checkout
+    </MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (cart == null || !cart.Items.Any())
+    {
+        <MudPaper Class="pa-8 mt-4 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.RemoveShoppingCart" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+            <MudText Typo="Typo.h6" GutterBottom="true">Your cart is empty</MudText>
+            <MudButton Href="/products" Variant="Variant.Filled" Color="Color.Primary">
+                Browse Products
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" md="8">
+                <!-- Stripe Test Cards Info -->
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    <MudText Typo="Typo.body2"><strong>Test Mode:</strong> Use Stripe test card numbers below</MudText>
+                    <MudText Typo="Typo.caption">
+                        Success: <code>4242 4242 4242 4242</code> | 
+                        Decline: <code>4000 0000 0000 0002</code>
+                    </MudText>
+                </MudAlert>
+
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Shipping Information</MudText>
+                    <MudDivider Class="my-3" />
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="shippingAddress.FullName" 
+                                         Label="Full Name" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="shippingAddress.AddressLine1" 
+                                         Label="Address Line 1" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="shippingAddress.AddressLine2" 
+                                         Label="Address Line 2 (Optional)" 
+                                         Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="shippingAddress.City" 
+                                         Label="City" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField @bind-Value="shippingAddress.State" 
+                                         Label="State" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudTextField @bind-Value="shippingAddress.ZipCode" 
+                                         Label="Zip Code" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="shippingAddress.Country" 
+                                         Label="Country" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Payment Information</MudText>
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" /> Your payment information is secure
+                    </MudText>
+                    
+                    <!-- Test Card Selector -->
+                    <MudItem xs="12" Class="mb-4">
+                        <MudSelect @bind-Value="selectedTestCard" 
+                                  Label="Quick Select Test Card" 
+                                  Variant="Variant.Outlined"
+                                  T="string"
+                                  Clearable="true"
+                                  HelperText="Select a Stripe test card for testing">
+                            @foreach (var card in StripeTestCards.TestCardDescriptions)
+                            {
+                                <MudSelectItem Value="@card.Key">@card.Value - @card.Key</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="paymentInfo.CardNumber" 
+                                         Label="Card Number" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true"
+                                         Mask="@(new PatternMask("0000 0000 0000 0000"))" 
+                                         HelperText="16-digit card number" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="paymentInfo.ExpiryDate" 
+                                         Label="Expiry Date (MM/YY)" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true"
+                                         Mask="@(new PatternMask("00/00"))" 
+                                         HelperText="Any future date" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="paymentInfo.CVV" 
+                                         Label="CVV" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true"
+                                         Mask="@(new PatternMask("0000"))"
+                                         HelperText="Any 3-4 digits" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="paymentInfo.CardHolderName" 
+                                         Label="Cardholder Name" 
+                                         Variant="Variant.Outlined" 
+                                         Required="true" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 sticky-top">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Order Summary</MudText>
+                    <MudDivider Class="my-3" />
+                    
+                    <div class="mb-3">
+                        @foreach (var item in cart.Items)
+                        {
+                            <div class="d-flex justify-space-between mb-2">
+                                <MudText>@item.ProductName x @item.Quantity</MudText>
+                                <MudText>@item.Subtotal.ToString("C")</MudText>
+                            </div>
+                        }
+                    </div>
+                    
+                    <MudDivider Class="my-3" />
+                    
+                    <div class="d-flex justify-space-between mb-2">
+                        <MudText>Subtotal</MudText>
+                        <MudText>@cart.TotalAmount.ToString("C")</MudText>
+                    </div>
+                    
+                    <div class="d-flex justify-space-between mb-2">
+                        <MudText>Shipping</MudText>
+                        <MudText Color="Color.Success">FREE</MudText>
+                    </div>
+                    
+                    <div class="d-flex justify-space-between mb-4">
+                        <MudText>Tax</MudText>
+                        <MudText>@((cart.TotalAmount * 0.08m).ToString("C"))</MudText>
+                    </div>
+                    
+                    <MudDivider Class="my-3" />
+                    
+                    <div class="d-flex justify-space-between mb-4">
+                        <MudText Typo="Typo.h6">Total</MudText>
+                        <MudText Typo="Typo.h6" Color="Color.Primary">
+                            @((cart.TotalAmount * 1.08m).ToString("C"))
+                        </MudText>
+                    </div>
+                    
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Success" 
+                              FullWidth="true" 
+                              Size="Size.Large"
+                              StartIcon="@Icons.Material.Filled.CheckCircle"
+                              OnClick="PlaceOrder"
+                              Disabled="isProcessing">
+                        @if (isProcessing)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <span class="ml-2">Processing...</span>
+                        }
+                        else
+                        {
+                            <span>Place Order</span>
+                        }
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+<style>
+    .sticky-top {
+        position: sticky;
+        top: 20px;
+    }
+</style>
+
+@code {
+    private Models.Cart? cart;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string? selectedTestCard;
+
+    private ShippingAddress shippingAddress = new();
+    private PaymentInformation paymentInfo = new();
+    
+    private Guid customerId;
+    private string customerEmail = "";
+    private string customerName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInfo();
+        await LoadCart();
+    }
+
+    private async Task LoadUserInfo()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            // JWT uses 'sub' for subject (user ID)
+            var userIdClaim = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var userId))
+            {
+                customerId = userId;
+            }
+            
+            // JWT uses 'email' claim
+            customerEmail = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value ?? "";
+            
+            // JWT uses 'given_name' and 'family_name' or 'unique_name'
+            var givenName = user.FindFirst("given_name")?.Value ?? "";
+            var familyName = user.FindFirst("family_name")?.Value ?? "";
+            var uniqueName = user.FindFirst("unique_name")?.Value ?? "";
+            
+            customerName = !string.IsNullOrEmpty(givenName) && !string.IsNullOrEmpty(familyName)
+                ? $"{givenName} {familyName}"
+                : uniqueName;
+            
+            // Pre-fill shipping info if available
+            shippingAddress.FullName = customerName;
+            
+            // Debug logging
+            Console.WriteLine($"Checkout - CustomerId: {customerId}, Email: {customerEmail}, Name: {customerName}");
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        try
+        {
+            isLoading = true;
+            cart = await CartService.GetCartAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load cart: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task PlaceOrder()
+    {
+        if (cart == null || !cart.Items.Any())
+        {
+            Snackbar.Add("Your cart is empty", Severity.Warning);
+            return;
+        }
+
+        if (!ValidateForm())
+        {
+            return;
+        }
+
+        isProcessing = true;
+        try
+        {
+            // Step 1: Create Order
+            var orderRequest = new CreateOrderRequest(
+                CustomerId: customerId,
+                CustomerEmail: customerEmail,
+                CustomerName: customerName,
+                Items: cart.Items.Where(item => Guid.TryParse(item.ProductId, out _))
+                    .Select(item => new OrderItemRequest(
+                        Guid.Parse(item.ProductId),
+                        item.ProductName,
+                        item.Price,
+                        item.Quantity
+                    )).ToList(),
+                Notes: $"Shipping to: {shippingAddress.FullName}, {shippingAddress.AddressLine1}, {shippingAddress.City}, {shippingAddress.State} {shippingAddress.ZipCode}"
+            );
+
+            var orderId = await OrderService.CreateOrderAsync(orderRequest);
+            
+            if (orderId == null)
+            {
+                Snackbar.Add("Failed to create order. Please check your cart and try again.", Severity.Error);
+                Console.WriteLine("PlaceOrder - CreateOrderAsync returned null");
+                return;
+            }
+            
+            Console.WriteLine($"PlaceOrder - Order created: {orderId}");
+
+            // Step 2: Process Payment
+            var totalWithTax = cart.TotalAmount * 1.08m;
+            var paymentRequest = new ProcessPaymentRequest(
+                OrderId: orderId.Value,
+                UserId: customerId,
+                Amount: totalWithTax,
+                Currency: "USD"
+            );
+            
+            Console.WriteLine($"PlaceOrder - Processing payment for order {orderId}, amount: {totalWithTax:C}");
+
+            var paymentResponse = await PaymentService.ProcessPaymentAsync(paymentRequest);
+            
+            Console.WriteLine($"PlaceOrder - Payment response: {(paymentResponse != null ? $"Status={paymentResponse.Status}" : "NULL")}");
+
+            if (paymentResponse != null && paymentResponse.Status == "Completed")
+            {
+                // Step 3: Clear cart
+                await CartService.ClearCartAsync();
+                
+                Snackbar.Add("Order placed successfully! 🎉", Severity.Success);
+                
+                // Navigate to order confirmation
+                await Task.Delay(1500);
+                Navigation.NavigateTo($"/orders/{orderId}");
+            }
+            else
+            {
+                var errorMessage = paymentResponse?.Message ?? "Payment processing failed";
+                Snackbar.Add($"Payment failed: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            Snackbar.Add($"Network error: {httpEx.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to place order: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(shippingAddress.FullName))
+            errors.Add("Full name is required");
+        if (string.IsNullOrWhiteSpace(shippingAddress.AddressLine1))
+            errors.Add("Address is required");
+        if (string.IsNullOrWhiteSpace(shippingAddress.City))
+            errors.Add("City is required");
+        if (string.IsNullOrWhiteSpace(shippingAddress.State))
+            errors.Add("State is required");
+        if (string.IsNullOrWhiteSpace(shippingAddress.ZipCode))
+            errors.Add("Zip code is required");
+
+        if (string.IsNullOrWhiteSpace(paymentInfo.CardNumber))
+            errors.Add("Card number is required");
+        if (string.IsNullOrWhiteSpace(paymentInfo.ExpiryDate))
+            errors.Add("Expiry date is required");
+        if (string.IsNullOrWhiteSpace(paymentInfo.CVV))
+            errors.Add("CVV is required");
+        if (string.IsNullOrWhiteSpace(paymentInfo.CardHolderName))
+            errors.Add("Cardholder name is required");
+
+        if (errors.Any())
+        {
+            foreach (var error in errors)
+            {
+                Snackbar.Add(error, Severity.Warning);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    private void OnTestCardSelected()
+    {
+        if (!string.IsNullOrEmpty(selectedTestCard))
+        {
+            paymentInfo.CardNumber = selectedTestCard;
+            paymentInfo.ExpiryDate = "12/25";
+            paymentInfo.CVV = "123";
+            paymentInfo.CardHolderName = "Test User";
+            
+            var cardDescription = StripeTestCards.TestCardDescriptions.GetValueOrDefault(
+                selectedTestCard.Replace(" ", ""), "Unknown");
+            Snackbar.Add($"Selected: {cardDescription}", Severity.Info);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(selectedTestCard))
+        {
+            OnTestCardSelected();
+        }
+    }
+
+    private class ShippingAddress
+    {
+        public string FullName { get; set; } = "";
+        public string AddressLine1 { get; set; } = "";
+        public string AddressLine2 { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string ZipCode { get; set; } = "";
+        public string Country { get; set; } = "United States";
+    }
+
+    private class PaymentInformation
+    {
+        public string CardNumber { get; set; } = "";
+        public string ExpiryDate { get; set; } = "";
+        public string CVV { get; set; } = "";
+        public string CardHolderName { get; set; } = "";
+    }
+}

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ErrorOr" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="Stripe.net" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProductOrderingSystem.PaymentService.Domain\ProductOrderingSystem.PaymentService.Domain.csproj" />
+    <ProjectReference Include="..\ProductOrderingSystem.PaymentService.Application\ProductOrderingSystem.PaymentService.Application.csproj" />
+  </ItemGroup>
+
+</Project>

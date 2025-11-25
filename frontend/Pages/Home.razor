@@ -1,0 +1,76 @@
+﻿@page "/"
+
+<PageTitle>Home - Product Ordering System</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudGrid Spacing="3" Class="my-8">
+        <MudItem xs="12" Class="text-center">
+            <MudText Typo="Typo.h2" GutterBottom="true">Welcome to Product Ordering System</MudText>
+            <MudText Typo="Typo.h5" Color="Color.Secondary">Your one-stop shop for quality products</MudText>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <div class="d-flex justify-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Primary" />
+                    </div>
+                    <MudText Typo="Typo.h6" Align="Align.Center">Wide Selection</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Browse our extensive catalog of quality products across multiple categories
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <div class="d-flex justify-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Primary" />
+                    </div>
+                    <MudText Typo="Typo.h6" Align="Align.Center">Easy Shopping</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Add items to your cart and checkout securely with our streamlined process
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <div class="d-flex justify-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Size="Size.Large" Color="Color.Primary" />
+                    </div>
+                    <MudText Typo="Typo.h6" Align="Align.Center">Fast Delivery</MudText>
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Track your orders and enjoy quick delivery to your doorstep
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" Class="text-center mt-4">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       Size="Size.Large" 
+                       Href="/products"
+                       StartIcon="@Icons.Material.Filled.ShoppingBag">
+                Start Shopping
+            </MudButton>
+            
+            <AuthorizeView>
+                <NotAuthorized>
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Primary" 
+                               Size="Size.Large" 
+                               Href="/register"
+                               Class="ml-2">
+                        Create Account
+                    </MudButton>
+                </NotAuthorized>
+            </AuthorizeView>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

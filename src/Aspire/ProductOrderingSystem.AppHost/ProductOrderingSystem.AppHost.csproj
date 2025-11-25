@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.5.1" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>e99f4316-9920-48f9-9a4e-f609cb241c5f</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
+    <PackageReference Include="Aspire.Hosting.Seq" />
+    <!-- AppHost needs MongoDB >= 3.4.3 for Aspire.Hosting.MongoDB, but services use 2.30.0 via Aspire.MongoDB.Driver -->
+    <PackageReference Include="MongoDB.Driver" VersionOverride="3.4.3" />
+    <PackageReference Include="MongoDB.Bson" VersionOverride="3.4.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Services\ProductService\ProductOrderingSystem.ProductService.WebAPI\ProductOrderingSystem.ProductService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Gateway\ProductOrderingSystem.ApiGateway\ProductOrderingSystem.ApiGateway.csproj" />
+    <ProjectReference Include="..\..\Services\OrderService\ProductOrderingSystem.OrderService.WebAPI\ProductOrderingSystem.OrderService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Services\IdentityService\ProductOrderingSystem.IdentityService.WebAPI\ProductOrderingSystem.IdentityService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Services\CartService\ProductOrderingSystem.CartService.WebAPI\ProductOrderingSystem.CartService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Services\PaymentService\ProductOrderingSystem.PaymentService.WebAPI\ProductOrderingSystem.PaymentService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Services\CustomerService\ProductOrderingSystem.CustomerService.WebAPI\ProductOrderingSystem.CustomerService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\Services\InventoryService\ProductOrderingSystem.InventoryService.csproj" />
+    <ProjectReference Include="..\..\..\frontend\ProductOrderingSystem.Web.csproj" />
+  </ItemGroup>
+
+</Project>

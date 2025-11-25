@@ -1,0 +1,172 @@
+@page "/register"
+@inject IAuthService AuthService
+@inject CustomAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Register - Product Ordering System</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="3" Class="pa-6">
+        <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom="true">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" />
+            Create Account
+        </MudText>
+        
+        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mb-6">
+            Join us to start shopping and track your orders
+        </MudText>
+
+        <EditForm Model="@_registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+            
+            <MudTextField @bind-Value="_registerModel.FirstName"
+                          Label="First Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="First name is required"
+                          Class="mb-3" />
+            
+            <MudTextField @bind-Value="_registerModel.LastName"
+                          Label="Last Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Last name is required"
+                          Class="mb-3" />
+            
+            <MudTextField @bind-Value="_registerModel.Username"
+                          Label="Username"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Username is required"
+                          Class="mb-3"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Person" />
+            
+            <MudTextField @bind-Value="_registerModel.Email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Required="true"
+                          RequiredError="Email is required"
+                          Class="mb-3"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email" />
+            
+            <MudTextField @bind-Value="_registerModel.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Password is required"
+                          Class="mb-3"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Lock" />
+            
+            <MudTextField @bind-Value="_registerModel.ConfirmPassword"
+                          Label="Confirm Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          RequiredError="Please confirm your password"
+                          Class="mb-4"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Lock" />
+            
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+            
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@_isLoading"
+                       Class="mb-3">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create Account</span>
+                }
+            </MudButton>
+        </EditForm>
+
+        <MudDivider Class="my-4" />
+        
+        <MudText Typo="Typo.body2" Align="Align.Center">
+            Already have an account?
+            <MudLink Href="/login" Color="Color.Primary">Sign in here</MudLink>
+        </MudText>
+
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-2">
+            <MudLink Href="/products" Color="Color.Secondary">Continue browsing without account</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private RegisterModel _registerModel = new();
+    private bool _isLoading = false;
+    private string? _errorMessage;
+
+    private async Task HandleRegister()
+    {
+        _errorMessage = null;
+        
+        // Validate passwords match
+        if (_registerModel.Password != _registerModel.ConfirmPassword)
+        {
+            _errorMessage = "Passwords do not match";
+            return;
+        }
+
+        _isLoading = true;
+        
+        try
+        {
+            var request = new RegisterRequest(
+                _registerModel.Username!,
+                _registerModel.Email!,
+                _registerModel.Password!,
+                _registerModel.FirstName!,
+                _registerModel.LastName!);
+            
+            var response = await AuthService.RegisterAsync(request);
+
+            if (response != null)
+            {
+                await AuthStateProvider.MarkUserAsAuthenticated(response.Token);
+                Snackbar.Add($"Welcome, {response.User.FirstName}! Your account has been created.", Severity.Success);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "Registration failed. Username or email may already be in use.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Registration failed: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private class RegisterModel
+    {
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Username { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+        public string? ConfirmPassword { get; set; }
+    }
+}

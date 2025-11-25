@@ -1,0 +1,22 @@
+﻿<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <MudNavLink Href="/products" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">Products</MudNavLink>
+    <MudNavLink Href="/cart" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingCart">Cart</MudNavLink>
+    
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="/orders" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Receipt">My Orders</MudNavLink>
+            <MudNavLink Href="/profile" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+            
+            <AuthorizeView Roles="Admin" Context="adminContext">
+                <MudDivider Class="my-2" />
+                <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+                    <MudNavLink Href="/admin/products" Icon="@Icons.Material.Filled.Inventory2">Manage Products</MudNavLink>
+                    <MudNavLink Href="/admin/inventory" Icon="@Icons.Material.Filled.Warehouse">Manage Inventory</MudNavLink>
+                    <MudNavLink Href="/admin/orders" Icon="@Icons.Material.Filled.ShoppingBag">View Orders</MudNavLink>
+                    <MudNavLink Href="/admin/customers" Icon="@Icons.Material.Filled.People">View Customers</MudNavLink>
+                </MudNavGroup>
+            </AuthorizeView>
+        </Authorized>
+    </AuthorizeView>
+</MudNavMenu>

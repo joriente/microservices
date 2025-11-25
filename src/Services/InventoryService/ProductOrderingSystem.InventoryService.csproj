@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Aspire -->
+    <ProjectReference Include="..\..\Aspire\ProductOrderingSystem.ServiceDefaults\ProductOrderingSystem.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Shared\ProductOrderingSystem.Shared.Contracts\ProductOrderingSystem.Shared.Contracts.csproj" />
+    
+    <!-- Aspire PostgreSQL with EF Core -->
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    
+    <!-- MediatR for Vertical Slices -->
+    <PackageReference Include="MediatR" />
+    
+    <!-- FluentValidation -->
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    
+    <!-- MassTransit for RabbitMQ -->
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    
+    <!-- JWT Authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    
+    <!-- OpenAPI -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    
+    <!-- API Documentation -->
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+</Project>

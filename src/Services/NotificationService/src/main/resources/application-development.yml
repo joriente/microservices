@@ -1,0 +1,10 @@
+sendgrid:
+  api-key: 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
+  from-email: joriente@radwell.com
+  from-name: Product Ordering System
+  enabled: true
+
+logging:
+  level:
+    com.productordering.notificationservice: DEBUG
+    com.productordering.notificationservice.infrastructure.email: DEBUG

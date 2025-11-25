@@ -1,0 +1,171 @@
+@page "/products"
+@inject IProductService ProductService
+@inject ICartService CartService
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Products - Product Ordering System</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true">Browse Products</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        Discover our wide selection of quality products
+    </MudText>
+
+    <MudGrid Spacing="3">
+        @if (_isLoading)
+        {
+            <MudItem xs="12" Class="d-flex justify-center pa-8">
+                <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+            </MudItem>
+        }
+        else if (_products == null || !_products.Any())
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-8 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+                    <MudText Typo="Typo.h6" Class="mb-2">No products available</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Check back later for new products
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        }
+        else
+        {
+            @foreach (var product in _products)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Class="h-100">
+                        @if (!string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            <MudCardMedia Image="@product.ImageUrl" Height="200" />
+                        }
+                        else
+                        {
+                            <div style="height: 200px; background-color: #f5f5f5; display: flex; align-items: center; justify-center;">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+                            </div>
+                        }
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" GutterBottom="true">@product.Name</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                                @if (!string.IsNullOrEmpty(product.Description))
+                                {
+                                    @(product.Description.Length > 100 ? product.Description.Substring(0, 100) + "..." : product.Description)
+                                }
+                            </MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Primary">$@product.Price.ToString("F2")</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" 
+                                      Color="Color.Primary"
+                                      StartIcon="@Icons.Material.Filled.Visibility">
+                                View Details
+                            </MudButton>
+                            <MudSpacer />
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                                      OnClick="() => AddToCart(product)"
+                                      Disabled="@_addingToCart">
+                                Add to Cart
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        }
+    </MudGrid>
+
+    @if (_paginationData != null && _paginationData.TotalPages > 1)
+    {
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" Class="d-flex justify-center">
+                <MudPagination Count="@_paginationData.TotalPages" 
+                               Selected="@_currentPage" 
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary" />
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<Product>? _products;
+    private PaginationData? _paginationData;
+    private int _currentPage = 1;
+    private bool _isLoading = true;
+    private bool _addingToCart = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        _isLoading = true;
+        
+        try
+        {
+            var request = new ProductSearchRequest(Page: _currentPage, PageSize: 12);
+            var result = await ProductService.SearchProductsAsync(request);
+            
+            if (result != null)
+            {
+                _products = result.Products;
+                _paginationData = new PaginationData(
+                    result.Page,
+                    result.PageSize,
+                    result.TotalCount,
+                    result.TotalPages);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading products: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadProducts();
+    }
+
+    private async Task AddToCart(Product product)
+    {
+        _addingToCart = true;
+        
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (!authState.User.Identity?.IsAuthenticated ?? true)
+            {
+                Snackbar.Add("Please log in to add items to cart", Severity.Warning);
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString("/products")}");
+                return;
+            }
+
+            var request = new AddToCartRequest(product.Id.ToString(), product.Name, product.Price, 1);
+            await CartService.AddToCartAsync(request);
+            Snackbar.Add($"Added {product.Name} to cart", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to add to cart: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _addingToCart = false;
+        }
+    }
+
+    private record PaginationData(int Page, int PageSize, int TotalCount, int TotalPages);
+}

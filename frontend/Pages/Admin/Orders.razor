@@ -1,0 +1,209 @@
+@page "/admin/orders"
+@using Microsoft.AspNetCore.Authorization
+@inject IOrderService OrderService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Manage Orders - Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingBag" Class="mr-2" />
+            Order Management
+        </MudText>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Refresh"
+                  OnClick="LoadOrders">
+            Refresh
+        </MudButton>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="searchQuery" 
+                             Label="Search by order ID or customer" 
+                             Variant="Variant.Outlined"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             OnKeyUp="@(e => OnSearchKeyUp())" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect @bind-Value="statusFilter" Label="Order Status" Variant="Variant.Outlined" T="string">
+                    <MudSelectItem Value="@("")">All Statuses</MudSelectItem>
+                    <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                    <MudSelectItem Value="@("Processing")">Processing</MudSelectItem>
+                    <MudSelectItem Value="@("Shipped")">Shipped</MudSelectItem>
+                    <MudSelectItem Value="@("Delivered")">Delivered</MudSelectItem>
+                    <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="ApplyFilters"
+                          FullWidth="true"
+                          Class="mt-1">
+                    Apply Filters
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="2">
+            <MudTable Items="@orders" 
+                      Hover="true" 
+                      Striped="true" 
+                      Dense="true">
+                <HeaderContent>
+                    <MudTh>Order ID</MudTh>
+                    <MudTh>Customer</MudTh>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Total</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Payment</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Order ID">
+                        <MudText Typo="Typo.body2"><strong>@context.Id.ToString().Substring(0, 8)...</strong></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Customer">
+                        <MudText Typo="Typo.body2">@context.CustomerId.ToString().Substring(0, 8)...</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Date">
+                        <MudText Typo="Typo.caption">@context.CreatedAt.ToString("g")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Total">
+                        <MudText Typo="Typo.body2"><strong>@context.TotalAmount.ToString("C")</strong></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip Size="Size.Small" T="string"
+                                Color="@GetStatusColor(context.Status.ToString())">
+                            @context.Status.ToString()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Notes">
+                        <MudText Typo="Typo.body2">@(context.Notes ?? "N/A")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                      Color="Color.Primary" 
+                                      Size="Size.Small"
+                                      OnClick="() => ViewOrderDetails(context)"
+                                      aria-label="View details" />
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" 
+                                  RowsPerPageString="Orders per page:"
+                                  InfoFormat="{first_item}-{last_item} of {all_items}" />
+                </PagerContent>
+            </MudTable>
+        </MudPaper>
+
+        @if (paginationData != null && paginationData.TotalPages > 1)
+        {
+            <MudPaper Class="pa-4 mt-4 d-flex justify-center">
+                <MudPagination Count="@paginationData.TotalPages" 
+                              Selected="@currentPage" 
+                              SelectedChanged="@OnPageChanged"
+                              BoundaryCount="2"
+                              MiddleCount="3" />
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<Order> orders = new();
+    private PaginationMetadata? paginationData;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private int pageSize = 25;
+    private string searchQuery = "";
+    private string statusFilter = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await OrderService.GetOrdersAsync(currentPage, pageSize);
+            
+            if (result != null)
+            {
+                orders = result.Orders;
+                paginationData = result.PaginationData;
+                
+                // Apply client-side filters
+                if (!string.IsNullOrWhiteSpace(statusFilter))
+                {
+                    orders = orders.Where(o => o.Status.ToString() == statusFilter).ToList();
+                }
+            }
+            else
+            {
+                orders = new();
+                paginationData = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load orders: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadOrders();
+    }
+
+    private async Task OnSearchKeyUp()
+    {
+        // Debounce search
+        await Task.Delay(300);
+        currentPage = 1;
+        await LoadOrders();
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadOrders();
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Default,
+        "Processing" => Color.Info,
+        "Shipped" => Color.Primary,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private void ViewOrderDetails(Order order)
+    {
+        Snackbar.Add($"Viewing details for order {order.Id}", Severity.Info);
+        // TODO: Implement order details dialog with items, shipping, payment info
+    }
+}

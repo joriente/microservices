@@ -1,0 +1,271 @@
+@page "/admin/products"
+@using Microsoft.AspNetCore.Authorization
+@inject IProductService ProductService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Manage Products - Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Inventory2" Class="mr-2" />
+            Product Management
+        </MudText>
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Add"
+                  OnClick="OpenCreateDialog">
+            Add Product
+        </MudButton>
+    </div>
+
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudText>
+            <strong>Note:</strong> You can set initial stock when creating a product. 
+            To adjust stock levels after creation, use the 
+            <MudLink Href="/admin/inventory" Color="Color.Primary">Inventory Management</MudLink> page.
+        </MudText>
+    </MudAlert>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="searchQuery" 
+                             Label="Search products" 
+                             Variant="Variant.Outlined"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             OnKeyUp="@(e => OnSearchKeyUp())" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect @bind-Value="filterCategory" Label="Category" Variant="Variant.Outlined" T="string">
+                    <MudSelectItem Value="@("")">All Categories</MudSelectItem>
+                    <MudSelectItem Value="@("Electronics")">Electronics</MudSelectItem>
+                    <MudSelectItem Value="@("Clothing")">Clothing</MudSelectItem>
+                    <MudSelectItem Value="@("Books")">Books</MudSelectItem>
+                    <MudSelectItem Value="@("Home & Garden")">Home & Garden</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          OnClick="ApplyFilters"
+                          FullWidth="true"
+                          Class="mt-1">
+                    Apply Filters
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudTable Items="@products" 
+                  Hover="true" 
+                  Striped="true" 
+                  Dense="true"
+                  Elevation="2">
+            <HeaderContent>
+                <MudTh>Image</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Price</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Image">
+                    @if (!string.IsNullOrEmpty(context.ImageUrl))
+                    {
+                        <MudAvatar Image="@context.ImageUrl" Size="Size.Medium" />
+                    }
+                    else
+                    {
+                        <MudAvatar Color="Color.Secondary" Size="Size.Medium">
+                            <MudIcon Icon="@Icons.Material.Filled.Image" />
+                        </MudAvatar>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Name">
+                    <MudText Typo="Typo.body2"><strong>@context.Name</strong></MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Description</MudText>
+                </MudTd>
+                <MudTd DataLabel="Category">
+                    <MudChip Size="Size.Small" Color="Color.Info" T="string">@context.Category</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Price">
+                    <MudText Typo="Typo.body2"><strong>@context.Price.ToString("C")</strong></MudText>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Small"
+                                  OnClick="() => OpenEditDialog(context)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                  Color="Color.Error" 
+                                  Size="Size.Small"
+                                  OnClick="() => DeleteProduct(context)" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+        </MudTable>
+
+        @if (paginationData != null && paginationData.TotalPages > 1)
+        {
+            <div class="d-flex justify-center mt-4">
+                <MudPagination Count="@paginationData.TotalPages" 
+                              Selected="@currentPage" 
+                              SelectedChanged="OnPageChanged"
+                              Color="Color.Primary" />
+            </div>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<Product> products = new();
+    private PaginationData? paginationData;
+    private int currentPage = 1;
+    private int pageSize = 25;
+    private bool isLoading = true;
+    private string searchQuery = "";
+    private string filterCategory = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        isLoading = true;
+        try
+        {
+            var request = new ProductSearchRequest(
+                SearchQuery: string.IsNullOrWhiteSpace(searchQuery) ? null : searchQuery,
+                Category: string.IsNullOrWhiteSpace(filterCategory) ? null : filterCategory,
+                Page: currentPage,
+                PageSize: pageSize);
+
+            var result = await ProductService.SearchProductsAsync(request);
+            if (result != null)
+            {
+                products = result.Products;
+                paginationData = new PaginationData(
+                    result.Page,
+                    result.PageSize,
+                    result.TotalCount,
+                    result.TotalPages);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load products: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadProducts();
+    }
+
+    private async Task OnSearchKeyUp()
+    {
+        // Debounce search
+        await Task.Delay(300);
+        currentPage = 1;
+        await LoadProducts();
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadProducts();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<ProductDialog>
+        {
+            { x => x.IsEditMode, false }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true,
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Create Product", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadProducts();
+        }
+    }
+
+    private async Task OpenEditDialog(Product product)
+    {
+        var parameters = new DialogParameters<ProductDialog>
+        {
+            { x => x.IsEditMode, true },
+            { x => x.ProductToEdit, product }
+        };
+
+        var options = new DialogOptions 
+        { 
+            CloseButton = true,
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Edit Product", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadProducts();
+        }
+    }
+
+    private async Task DeleteProduct(Product product)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Product",
+            $"Are you sure you want to delete '{product.Name}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await ProductService.DeleteProductAsync(product.Id);
+                Snackbar.Add($"Product '{product.Name}' deleted successfully", Severity.Success);
+                await LoadProducts();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete product: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private record PaginationData(int Page, int PageSize, int TotalCount, int TotalPages);
+}

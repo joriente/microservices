@@ -1,0 +1,19 @@
+# Playwright Test Artifacts
+videos/
+traces/
+screenshots/
+
+# Video files
+*.webm
+*.mp4
+
+# Trace files
+*.zip
+
+# Screenshot files
+*.png
+*.jpg
+*.jpeg
+
+# Test results
+TestResults/

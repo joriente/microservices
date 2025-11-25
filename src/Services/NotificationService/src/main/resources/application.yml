@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: notification-service
+  
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://admin:admin123@localhost:27017/notificationdb?authSource=admin}
+  
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
+
+rabbitmq:
+  queues:
+    order-created: notification-service-order-created
+    payment-processed: notification-service-payment-processed
+    payment-failed: notification-service-payment-failed
+  exchanges:
+    order-created: ProductOrderingSystem.Shared.Contracts.Events:OrderCreatedEvent
+    payment-processed: ProductOrderingSystem.Shared.Contracts.Events:PaymentProcessedEvent
+    payment-failed: ProductOrderingSystem.Shared.Contracts.Events:PaymentFailedEvent
+
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:your-sendgrid-api-key}
+  from-email: ${SENDGRID_FROM_EMAIL:noreply@productordering.com}
+  from-name: ${SENDGRID_FROM_NAME:Product Ordering System}
+  enabled: ${SENDGRID_ENABLED:false}
+
+server:
+  port: ${PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  health:
+    rabbitmq:
+      enabled: true
+    mongo:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.productordering.notificationservice: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.data.mongodb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

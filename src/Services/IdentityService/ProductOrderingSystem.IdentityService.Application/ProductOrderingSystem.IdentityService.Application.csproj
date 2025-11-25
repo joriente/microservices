@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" />
+    <PackageReference Include="ErrorOr" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProductOrderingSystem.IdentityService.Domain\ProductOrderingSystem.IdentityService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\ProductOrderingSystem.Shared.Contracts\ProductOrderingSystem.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,721 @@
+# Product Ordering System - Architecture Diagrams
+
+This document contains comprehensive architecture diagrams showing the system's structure, data flow, and event-driven communication patterns.
+
+## Table of Contents
+1. [High-Level System Architecture](#high-level-system-architecture)
+2. [Service Communication Flow](#service-communication-flow)
+3. [Order Processing Flow](#order-processing-flow)
+4. [Event-Driven Architecture](#event-driven-architecture)
+5. [Database Architecture](#database-architecture)
+
+---
+
+## High-Level System Architecture
+
+### System Overview
+
+```mermaid
+flowchart TB
+    subgraph "Frontend"
+        UI[Blazor WebAssembly<br/>Port 5261]
+    end
+    
+    subgraph "API Layer"
+        GW[API Gateway - Yarp<br/>Port 5000]
+    end
+    
+    subgraph ".NET Microservices"
+        ID[IdentityService<br/>Port 5001<br/>MongoDB]
+        PROD[ProductService<br/>Port 5002<br/>MongoDB]
+        CART[CartService<br/>Port 5003<br/>MongoDB]
+        ORD[OrderService<br/>Port 5004<br/>MongoDB]
+        PAY[PaymentService<br/>Port 5005<br/>MongoDB]
+        CUST[CustomerService<br/>Port 5006<br/>MongoDB]
+        INV[InventoryService<br/>Port 5007<br/>PostgreSQL]
+    end
+    
+    subgraph "Java Microservices"
+        NOT[NotificationService<br/>Port 8085<br/>Java/Spring Boot<br/>MongoDB]
+    end
+    
+    subgraph "Infrastructure"
+        MDB[(MongoDB)]
+        PG[(PostgreSQL)]
+        RMQ[RabbitMQ<br/>Message Broker]
+        SEQ[Seq<br/>Logging]
+    end
+    
+    subgraph "External Services"
+        STRIPE[Stripe API]
+        SENDGRID[SendGrid API]
+    end
+    
+    UI --> GW
+    GW --> ID & PROD & CART & ORD & PAY & CUST & INV
+    
+    ID & PROD & CART & ORD & PAY & CUST -.-> MDB
+    INV -.-> PG
+    NOT -.-> MDB
+    
+    ID & PROD & CART & ORD & PAY & CUST & INV --> RMQ
+    RMQ --> NOT
+    
+    PAY --> STRIPE
+    NOT --> SENDGRID
+    
+    ID & PROD & CART & ORD & PAY & CUST & INV & NOT --> SEQ
+    
+    style UI fill:#e1f5ff
+    style GW fill:#fff3e0
+    style ID fill:#f3e5f5
+    style PROD fill:#f3e5f5
+    style CART fill:#f3e5f5
+    style ORD fill:#f3e5f5
+    style PAY fill:#f3e5f5
+    style CUST fill:#f3e5f5
+    style INV fill:#e8f5e9
+    style NOT fill:#fff9c4
+    style RMQ fill:#ffebee
+    style MDB fill:#e0f2f1
+    style PG fill:#e0f2f1
+```
+
+### Technology Stack
+
+```mermaid
+flowchart LR
+    subgraph "Frontend"
+        FE1[Blazor WebAssembly]
+        FE2[MudBlazor UI]
+        FE3["C&num; 13"]
+    end
+    
+    subgraph ".NET Services"
+        BE1[.NET 9.0]
+        BE2[ASP.NET Core]
+        BE3[MassTransit]
+        BE4[EF Core 9]
+    end
+    
+    subgraph "Java Services"
+        JA1[Java 21]
+        JA2[Spring Boot 3.4]
+        JA3[Spring AMQP]
+        JA4[Spring Data]
+    end
+    
+    subgraph "Databases"
+        DB1[(MongoDB 8)]
+        DB2[(PostgreSQL 17)]
+    end
+    
+    subgraph "Messaging"
+        MSG[RabbitMQ 4.0]
+    end
+    
+    subgraph "Observability"
+        OBS1[Seq]
+        OBS2[.NET Aspire]
+        OBS3[Spring Actuator]
+    end
+    
+    FE1 & FE2 & FE3 --> BE1
+    BE1 --> BE2 & BE3 & BE4
+    JA1 --> JA2 & JA3 & JA4
+    BE3 & JA3 --> MSG
+    BE4 --> DB2
+    BE2 & JA4 --> DB1
+    BE2 --> OBS1 & OBS2
+    JA2 --> OBS1 & OBS3
+```
+
+---
+
+## Service Communication Flow
+
+### Customer Shopping Journey
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Gateway as API Gateway
+    participant Identity as IdentityService
+    participant Product as ProductService
+    participant Cart as CartService
+    participant Order as OrderService
+    participant Payment as PaymentService
+    participant Inventory as InventoryService
+    participant Notification as NotificationService<br/>(Java)
+    participant RabbitMQ
+    
+    User->>Frontend: Browse Products
+    Frontend->>Gateway: GET /api/products
+    Gateway->>Product: Forward Request
+    Product-->>Gateway: Product List
+    Gateway-->>Frontend: Product List
+    Frontend-->>User: Display Products
+    
+    User->>Frontend: Login
+    Frontend->>Gateway: POST /api/auth/login
+    Gateway->>Identity: Forward Request
+    Identity-->>Gateway: JWT Token
+    Gateway-->>Frontend: JWT Token
+    Frontend-->>User: Logged In
+    
+    User->>Frontend: Add to Cart
+    Frontend->>Gateway: POST /api/cart/items<br/>[Authorization: Bearer token]
+    Gateway->>Cart: Forward Request
+    Cart-->>Gateway: Cart Updated
+    Gateway-->>Frontend: Success
+    
+    User->>Frontend: Checkout
+    Frontend->>Gateway: POST /api/orders<br/>[Authorization: Bearer token]
+    Gateway->>Order: Create Order
+    Order->>RabbitMQ: Publish OrderCreatedEvent
+    Order-->>Gateway: Order Created (201)
+    Gateway-->>Frontend: Order ID
+    
+    RabbitMQ->>Inventory: OrderCreatedEvent
+    Inventory->>Inventory: Reserve Stock
+    Inventory->>RabbitMQ: Publish InventoryReservedEvent
+    
+    RabbitMQ->>Cart: OrderCreatedEvent
+    Cart->>Cart: Clear Customer Cart
+    
+    RabbitMQ->>Notification: OrderCreatedEvent
+    Notification->>Notification: Send Confirmation Email
+    
+    Frontend->>Gateway: POST /api/payments<br/>[Authorization: Bearer token]
+    Gateway->>Payment: Process Payment
+    Payment->>Payment: Call Stripe API
+    
+    alt Payment Success
+        Payment->>RabbitMQ: Publish PaymentProcessedEvent
+        RabbitMQ->>Inventory: PaymentProcessedEvent
+        Inventory->>Inventory: Commit Reservation
+        Inventory->>RabbitMQ: Publish InventoryCommittedEvent
+        RabbitMQ->>Order: InventoryCommittedEvent
+        Order->>Order: Update Status: Processing
+        RabbitMQ->>Notification: PaymentProcessedEvent
+        Notification->>Notification: Send Payment Success Email
+    else Payment Failed
+        Payment->>RabbitMQ: Publish PaymentFailedEvent
+        RabbitMQ->>Inventory: PaymentFailedEvent
+        Inventory->>Inventory: Release Reservation
+        RabbitMQ->>Order: PaymentFailedEvent
+        Order->>Order: Update Status: Cancelled
+        RabbitMQ->>Notification: PaymentFailedEvent
+        Notification->>Notification: Send Payment Failed Email
+    end
+    
+    Payment-->>Gateway: Payment Result
+    Gateway-->>Frontend: Payment Result
+    Frontend-->>User: Order Confirmation
+```
+
+---
+
+## Order Processing Flow
+
+### Complete Order Lifecycle
+
+```mermaid
+flowchart TD
+    Start([Customer Places Order]) --> CreateOrder[OrderService<br/>Creates Order]
+    CreateOrder --> PublishOrderCreated[Publish<br/>OrderCreatedEvent]
+    
+    PublishOrderCreated --> |RabbitMQ| ClearCart[CartService<br/>Clear Cart]
+    PublishOrderCreated --> |RabbitMQ| ReserveInventory[InventoryService<br/>Reserve Stock]
+    PublishOrderCreated --> |RabbitMQ| SendOrderEmail[NotificationService<br/>Send Confirmation]
+    
+    ReserveInventory --> CheckStock{Stock<br/>Available?}
+    CheckStock -->|Yes| PublishReserved[Publish<br/>InventoryReservedEvent]
+    CheckStock -->|No| PublishFailed[Publish<br/>InventoryReservationFailedEvent]
+    
+    PublishReserved --> ProcessPayment[PaymentService<br/>Process Payment]
+    ProcessPayment --> CallStripe[Call Stripe API]
+    
+    CallStripe --> PaymentResult{Payment<br/>Success?}
+    
+    PaymentResult -->|Success| PublishPaymentSuccess[Publish<br/>PaymentProcessedEvent]
+    PaymentResult -->|Failed| PublishPaymentFailed[Publish<br/>PaymentFailedEvent]
+    
+    PublishPaymentSuccess --> |RabbitMQ| CommitInventory[InventoryService<br/>Commit Reservation]
+    PublishPaymentSuccess --> |RabbitMQ| UpdateOrderSuccess[OrderService<br/>Status: Processing]
+    PublishPaymentSuccess --> |RabbitMQ| SendPaymentSuccessEmail[NotificationService<br/>Payment Success Email]
+    
+    PublishPaymentFailed --> |RabbitMQ| ReleaseInventory[InventoryService<br/>Release Reservation]
+    PublishPaymentFailed --> |RabbitMQ| UpdateOrderFailed[OrderService<br/>Status: Cancelled]
+    PublishPaymentFailed --> |RabbitMQ| SendPaymentFailedEmail[NotificationService<br/>Payment Failed Email]
+    
+    CommitInventory --> PublishCommitted[Publish<br/>InventoryCommittedEvent]
+    PublishCommitted --> |RabbitMQ| FinalizeOrder[OrderService<br/>Finalize Order]
+    
+    ReleaseInventory --> CancelOrder[OrderService<br/>Cancel Order]
+    
+    UpdateOrderSuccess --> OrderComplete([Order Complete])
+    UpdateOrderFailed --> OrderCancelled([Order Cancelled])
+    CancelOrder --> OrderCancelled
+    FinalizeOrder --> OrderComplete
+    
+    style CreateOrder fill:#e1f5ff
+    style ProcessPayment fill:#fff3e0
+    style ReserveInventory fill:#e8f5e9
+    style CommitInventory fill:#e8f5e9
+    style SendOrderEmail fill:#fff9c4
+    style SendPaymentSuccessEmail fill:#fff9c4
+    style SendPaymentFailedEmail fill:#fff9c4
+    style OrderComplete fill:#c8e6c9
+    style OrderCancelled fill:#ffcdd2
+```
+
+### Saga Pattern - Compensation Flow
+
+```mermaid
+flowchart TB
+    subgraph "Happy Path"
+        H1[Order Created] --> H2[Inventory Reserved]
+        H2 --> H3[Payment Processed]
+        H3 --> H4[Inventory Committed]
+        H4 --> H5[Order Complete]
+    end
+    
+    subgraph "Compensation Path"
+        C1[Order Created] --> C2[Inventory Reserved]
+        C2 --> C3[Payment Failed]
+        C3 --> C4[Inventory Released<br/>Compensation]
+        C4 --> C5[Order Cancelled<br/>Compensation]
+    end
+    
+    style H5 fill:#c8e6c9
+    style C5 fill:#ffcdd2
+    style C4 fill:#ffe0b2
+    style C5 fill:#ffe0b2
+```
+
+---
+
+## Event-Driven Architecture
+
+### Event Flow Map
+
+```mermaid
+flowchart LR
+    subgraph "Event Publishers"
+        PROD_PUB[ProductService]
+        ORD_PUB[OrderService]
+        PAY_PUB[PaymentService]
+        INV_PUB[InventoryService]
+    end
+    
+    subgraph "RabbitMQ Message Broker"
+        PROD_EX[ProductCreatedEvent<br/>Exchange]
+        ORD_EX[OrderCreatedEvent<br/>Exchange]
+        PAY_EX[PaymentProcessedEvent<br/>PaymentFailedEvent<br/>Exchanges]
+        INV_EX[InventoryReservedEvent<br/>InventoryCommittedEvent<br/>Exchanges]
+    end
+    
+    subgraph "Event Consumers"
+        CART_CON[CartService]
+        ORD_CON[OrderService]
+        INV_CON[InventoryService]
+        NOT_CON[NotificationService<br/>Java]
+    end
+    
+    PROD_PUB -->|Publish| PROD_EX
+    ORD_PUB -->|Publish| ORD_EX
+    PAY_PUB -->|Publish| PAY_EX
+    INV_PUB -->|Publish| INV_EX
+    
+    PROD_EX -->|Subscribe| CART_CON
+    ORD_EX -->|Subscribe| CART_CON
+    ORD_EX -->|Subscribe| INV_CON
+    ORD_EX -->|Subscribe| NOT_CON
+    
+    PAY_EX -->|Subscribe| INV_CON
+    PAY_EX -->|Subscribe| ORD_CON
+    PAY_EX -->|Subscribe| NOT_CON
+    
+    INV_EX -->|Subscribe| ORD_CON
+    
+    style PROD_PUB fill:#f3e5f5
+    style ORD_PUB fill:#f3e5f5
+    style PAY_PUB fill:#f3e5f5
+    style INV_PUB fill:#e8f5e9
+    style NOT_CON fill:#fff9c4
+    style CART_CON fill:#f3e5f5
+    style ORD_CON fill:#f3e5f5
+    style INV_CON fill:#e8f5e9
+```
+
+### Event Types and Consumers
+
+```mermaid
+flowchart TD
+    subgraph "Product Events"
+        PE1[ProductCreatedEvent]
+        PE2[ProductUpdatedEvent]
+        PE3[ProductDeletedEvent]
+    end
+    
+    subgraph "Order Events"
+        OE1[OrderCreatedEvent]
+        OE2[OrderCancelledEvent]
+    end
+    
+    subgraph "Payment Events"
+        PAE1[PaymentProcessedEvent]
+        PAE2[PaymentFailedEvent]
+    end
+    
+    subgraph "Inventory Events"
+        IE1[InventoryReservedEvent]
+        IE2[InventoryCommittedEvent]
+        IE3[InventoryReservationFailedEvent]
+    end
+    
+    PE1 & PE2 & PE3 -.->|Cache Product| CART[CartService]
+    OE1 -.->|Clear Cart| CART
+    OE1 -.->|Reserve Stock| INV[InventoryService]
+    OE1 -.->|Send Email| NOT[NotificationService]
+    
+    PAE1 -.->|Commit Stock| INV
+    PAE1 -.->|Update Status| ORD[OrderService]
+    PAE1 -.->|Send Email| NOT
+    
+    PAE2 -.->|Release Stock| INV
+    PAE2 -.->|Cancel Order| ORD
+    PAE2 -.->|Send Email| NOT
+    
+    IE1 & IE2 & IE3 -.->|Update Status| ORD
+    
+    style CART fill:#f3e5f5
+    style INV fill:#e8f5e9
+    style NOT fill:#fff9c4
+    style ORD fill:#f3e5f5
+```
+
+---
+
+## Database Architecture
+
+### Database-Per-Service Pattern
+
+```mermaid
+flowchart TB
+    subgraph "MongoDB Cluster - Port 27017"
+        DB1[(identitydb)]
+        DB2[(productdb)]
+        DB3[(cartdb)]
+        DB4[(orderdb)]
+        DB5[(paymentdb)]
+        DB6[(customerdb)]
+        DB7[(notificationdb)]
+    end
+    
+    subgraph "PostgreSQL - Port 5432"
+        DB8[(inventorydb)]
+    end
+    
+    subgraph "Services"
+        S1[IdentityService]
+        S2[ProductService]
+        S3[CartService]
+        S4[OrderService]
+        S5[PaymentService]
+        S6[CustomerService]
+        S7[NotificationService<br/>Java]
+        S8[InventoryService]
+    end
+    
+    S1 -.->|MongoDB Driver| DB1
+    S2 -.->|MongoDB Driver| DB2
+    S3 -.->|MongoDB Driver| DB3
+    S4 -.->|MongoDB Driver| DB4
+    S5 -.->|MongoDB Driver| DB5
+    S6 -.->|MongoDB Driver| DB6
+    S7 -.->|Spring Data MongoDB| DB7
+    S8 -.->|EF Core| DB8
+    
+    style DB8 fill:#e8f5e9
+    style S8 fill:#e8f5e9
+    style S7 fill:#fff9c4
+    style DB1 fill:#e0f2f1
+    style DB2 fill:#e0f2f1
+    style DB3 fill:#e0f2f1
+    style DB4 fill:#e0f2f1
+    style DB5 fill:#e0f2f1
+    style DB6 fill:#e0f2f1
+    style DB7 fill:#e0f2f1
+```
+
+### Data Models by Service
+
+```mermaid
+flowchart LR
+    subgraph "IdentityService - MongoDB"
+        I1[User<br/>- Email<br/>- Password Hash<br/>- JWT Tokens]
+    end
+    
+    subgraph "ProductService - MongoDB"
+        P1[Product<br/>- Name<br/>- Description<br/>- Price<br/>- Stock]
+    end
+    
+    subgraph "CartService - MongoDB"
+        C1[Cart<br/>- CustomerId<br/>- Items<br/>- Total]
+        C2[ProductCache<br/>- ProductId<br/>- Name<br/>- Price]
+    end
+    
+    subgraph "OrderService - MongoDB"
+        O1[Order<br/>- CustomerId<br/>- Items<br/>- Status<br/>- Total]
+    end
+    
+    subgraph "PaymentService - MongoDB"
+        PA1[Payment<br/>- OrderId<br/>- Amount<br/>- StripeId<br/>- Status]
+    end
+    
+    subgraph "CustomerService - MongoDB"
+        CU1[Customer<br/>- Name<br/>- Email<br/>- Addresses]
+    end
+    
+    subgraph "InventoryService - PostgreSQL"
+        IN1[InventoryItem<br/>- ProductId<br/>- Quantity<br/>- Reserved]
+        IN2[InventoryReservation<br/>- OrderId<br/>- ProductId<br/>- Quantity]
+    end
+    
+    subgraph "NotificationService - MongoDB"
+        N1[Notification<br/>- OrderId<br/>- Type<br/>- Status<br/>- Email]
+    end
+    
+    style IN1 fill:#e8f5e9
+    style IN2 fill:#e8f5e9
+    style N1 fill:#fff9c4
+```
+
+---
+
+## Deployment Architecture
+
+### Container Organization
+
+```mermaid
+flowchart TB
+    subgraph "Docker Containers - ProductOrdering Project"
+        subgraph "Infrastructure"
+            RMQ[ProductOrdering-rabbitmq<br/>Ports: 5672, 15672]
+            MONGO[ProductOrdering-mongodb<br/>Port: 27017]
+            PG[ProductOrdering-postgres<br/>Port: 5432]
+            SEQ[ProductOrdering-seq<br/>Port: 5341]
+        end
+        
+        subgraph "Management UIs"
+            PGADMIN[pgAdmin<br/>PostgreSQL UI]
+            MONGOEX[Mongo Express<br/>MongoDB UI]
+            RMQUI[RabbitMQ Management<br/>Port 15672]
+        end
+    end
+    
+    subgraph "Aspire Orchestrated Services"
+        ASP[Aspire Dashboard<br/>Port 15888]
+        SVCS[7 .NET Microservices<br/>Ports 5001-5007]
+        GW2[API Gateway<br/>Port 5000]
+        FE[Frontend<br/>Port 5261]
+    end
+    
+    subgraph "Standalone Services"
+        JAVA[NotificationService<br/>Java/Spring Boot<br/>Port 8085]
+    end
+    
+    RMQ & MONGO & PG & SEQ -.-> SVCS & JAVA
+    SVCS --> ASP
+    GW2 --> SVCS
+    FE --> GW2
+    
+    PGADMIN -.-> PG
+    MONGOEX -.-> MONGO
+    RMQUI -.-> RMQ
+    
+    style RMQ fill:#ffebee
+    style MONGO fill:#e0f2f1
+    style PG fill:#e0f2f1
+    style SEQ fill:#fff3e0
+    style JAVA fill:#fff9c4
+    style ASP fill:#e1f5ff
+```
+
+### Port Allocation
+
+```mermaid
+flowchart LR
+    subgraph "Service Ports"
+        P5000[5000 - API Gateway]
+        P5001[5001 - IdentityService]
+        P5002[5002 - ProductService]
+        P5003[5003 - CartService]
+        P5004[5004 - OrderService]
+        P5005[5005 - PaymentService]
+        P5006[5006 - CustomerService]
+        P5007[5007 - InventoryService]
+        P8085[8085 - NotificationService]
+        P5261[5261 - Frontend]
+    end
+    
+    subgraph "Infrastructure Ports"
+        P15888[15888 - Aspire Dashboard]
+        P5341[5341 - Seq Logs]
+        P15672[15672 - RabbitMQ UI]
+        P27017[27017 - MongoDB]
+        P5432[5432 - PostgreSQL]
+        P8081[8081 - Mongo Express]
+    end
+    
+    style P8085 fill:#fff9c4
+    style P5007 fill:#e8f5e9
+```
+
+---
+
+## Security Architecture
+
+### Authentication & Authorization Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Gateway
+    participant Identity as IdentityService
+    participant Service as Any Microservice
+    
+    User->>Frontend: Enter Credentials
+    Frontend->>Gateway: POST /api/auth/login
+    Gateway->>Identity: Forward Request
+    Identity->>Identity: Validate Credentials
+    Identity->>Identity: Generate JWT Token
+    Identity-->>Gateway: JWT Token + User Info
+    Gateway-->>Frontend: JWT Token + User Info
+    Frontend->>Frontend: Store Token in Memory
+    
+    Note over User,Service: Subsequent Requests
+    
+    User->>Frontend: Request Resource
+    Frontend->>Gateway: GET /api/resource<br/>[Authorization: Bearer TOKEN]
+    Gateway->>Gateway: Validate JWT Signature
+    Gateway->>Gateway: Check Token Expiration
+    Gateway->>Service: Forward with Token
+    Service->>Service: Extract User Claims
+    Service->>Service: Authorize Action
+    Service-->>Gateway: Resource Data
+    Gateway-->>Frontend: Resource Data
+    Frontend-->>User: Display Data
+```
+
+### JWT Token Structure
+
+```mermaid
+flowchart LR
+    subgraph "JWT Token"
+        direction TB
+        H[Header<br/>- Algorithm: HS256<br/>- Type: JWT]
+        P[Payload<br/>- UserId<br/>- Email<br/>- Roles<br/>- Expiration]
+        S[Signature<br/>- HMAC SHA256<br/>- Secret Key]
+    end
+    
+    H --> E[Encoded Token]
+    P --> E
+    S --> E
+    
+    E --> GW[API Gateway<br/>Validates Signature]
+    GW --> MS[Microservices<br/>Extract Claims]
+```
+
+---
+
+## Observability & Monitoring
+
+### Logging and Tracing
+
+```mermaid
+flowchart TB
+    subgraph "Services"
+        S1[IdentityService]
+        S2[ProductService]
+        S3[CartService]
+        S4[OrderService]
+        S5[PaymentService]
+        S6[CustomerService]
+        S7[InventoryService]
+        S8[NotificationService]
+        S9[API Gateway]
+    end
+    
+    subgraph "Logging Infrastructure"
+        SEQ[Seq<br/>Centralized Logging<br/>Port 5341]
+    end
+    
+    subgraph "Monitoring"
+        ASP[Aspire Dashboard<br/>Service Health<br/>Port 15888]
+        ACT[Spring Actuator<br/>Java Metrics<br/>Port 8085/actuator]
+    end
+    
+    S1 & S2 & S3 & S4 & S5 & S6 & S7 & S9 -->|Serilog| SEQ
+    S8 -->|SLF4J/Logback| SEQ
+    
+    S1 & S2 & S3 & S4 & S5 & S6 & S7 & S9 -->|Telemetry| ASP
+    S8 -->|Metrics| ACT
+    
+    style SEQ fill:#fff3e0
+    style ASP fill:#e1f5ff
+    style S8 fill:#fff9c4
+```
+
+### Correlation Tracking
+
+```mermaid
+sequenceDiagram
+    participant Frontend
+    participant Gateway
+    participant OrderService
+    participant RabbitMQ
+    participant InventoryService
+    participant PaymentService
+    participant Seq
+    
+    Note over Frontend,Seq: CorrelationId: abc-123-xyz
+    
+    Frontend->>Gateway: Create Order [CorrelationId: abc-123-xyz]
+    Gateway->>Seq: Log: Request Received
+    Gateway->>OrderService: Forward Request [CorrelationId: abc-123-xyz]
+    OrderService->>Seq: Log: Order Created
+    OrderService->>RabbitMQ: Publish Event [CorrelationId: abc-123-xyz]
+    
+    RabbitMQ->>InventoryService: OrderCreatedEvent [CorrelationId: abc-123-xyz]
+    InventoryService->>Seq: Log: Stock Reserved
+    
+    RabbitMQ->>PaymentService: OrderCreatedEvent [CorrelationId: abc-123-xyz]
+    PaymentService->>Seq: Log: Payment Initiated
+    
+    Note over Seq: All logs linked by CorrelationId<br/>Easy to trace complete flow
+```
+
+---
+
+## Summary
+
+These diagrams illustrate:
+
+✅ **High-Level Architecture** - 8 microservices (7 .NET + 1 Java) with polyglot persistence  
+✅ **Event-Driven Communication** - RabbitMQ-based async messaging  
+✅ **Saga Pattern** - Distributed transaction handling with compensation  
+✅ **Database-Per-Service** - Independent data stores (MongoDB + PostgreSQL)  
+✅ **Security** - JWT-based authentication and authorization  
+✅ **Observability** - Centralized logging and distributed tracing  
+✅ **Polyglot Architecture** - .NET and Java services working together  
+
+For detailed implementation, see:
+- [POLYGLOT_INTEGRATION.md](POLYGLOT_INTEGRATION.md) - Java/.NET integration
+- [Event-Naming-Conventions.md](Event-Naming-Conventions.md) - Event contracts
+- [MESSAGING_IMPLEMENTATION.md](MESSAGING_IMPLEMENTATION.md) - RabbitMQ patterns
+- [SAGA_COMPENSATION_IMPLEMENTATION.md](SAGA_COMPENSATION_IMPLEMENTATION.md) - Saga implementation

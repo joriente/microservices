@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.MongoDb" />
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.WebAPI\ProductOrderingSystem.CustomerService.WebAPI.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.Domain\ProductOrderingSystem.CustomerService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.Application\ProductOrderingSystem.CustomerService.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\ProductOrderingSystem.Shared.Contracts\ProductOrderingSystem.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

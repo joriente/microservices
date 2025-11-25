@@ -1,0 +1,155 @@
+@page "/orders"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject IOrderService OrderService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Authorize]
+
+<PageTitle>My Orders</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" />
+        My Orders
+    </MudText>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (!orders.Any())
+    {
+        <MudPaper Class="pa-8 mt-4 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+            <MudText Typo="Typo.h6" GutterBottom="true">No orders yet</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Start shopping to see your orders here
+            </MudText>
+            <MudButton Href="/products" Variant="Variant.Filled" Color="Color.Primary">
+                Browse Products
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-4">
+            <MudTable Items="@orders" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@isLoading" LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>Order #</MudTh>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Items</MudTh>
+                    <MudTh>Total</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Order #">
+                        <MudText Typo="Typo.body2">@("#" + context.Id.ToString().Substring(0, 8))</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Date">
+                        <MudText Typo="Typo.body2">@context.CreatedAt.ToString("MMM dd, yyyy")</MudText>
+                        <MudText Typo="Typo.caption">@context.CreatedAt.ToString("h:mm tt")</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Items">
+                        <MudText Typo="Typo.body2">@(context.Items.Count) item(s)</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Total">
+                        <MudText Typo="Typo.body2"><strong>@context.TotalAmount.ToString("C")</strong></MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip Size="Size.Small" T="string"
+                                Color="@GetStatusColor(context.Status.ToString())">
+                            @context.Status.ToString()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudButton Variant="Variant.Text" 
+                                  Color="Color.Primary" 
+                                  Size="Size.Small"
+                                  OnClick="@(() => ViewOrderDetails(context.Id))"
+                                  StartIcon="@Icons.Material.Filled.Visibility">
+                            View Details
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" 
+                                  RowsPerPageString="Orders per page:"
+                                  InfoFormat="{first_item}-{last_item} of {all_items}" />
+                </PagerContent>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<Order> orders = new();
+    private bool isLoading = true;
+    private Guid customerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomerId();
+        await LoadOrders();
+    }
+
+    private async Task LoadCustomerId()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            var userIdClaim = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var userId))
+            {
+                customerId = userId;
+            }
+        }
+    }
+
+    private async Task LoadOrders()
+    {
+        try
+        {
+            isLoading = true;
+            
+            // Get orders for current customer
+            var result = await OrderService.GetOrdersAsync(page: 1, pageSize: 100);
+            
+            if (result != null)
+            {
+                // Filter to only show current user's orders
+                orders = result.Orders.Where(o => o.CustomerId == customerId)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load orders: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewOrderDetails(Guid orderId)
+    {
+        Navigation.NavigateTo($"/orders/{orderId}");
+    }
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "Confirmed" => Color.Info,
+        "Processing" => Color.Primary,
+        "Shipped" => Color.Secondary,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+}
