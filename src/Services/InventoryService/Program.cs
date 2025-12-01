@@ -48,7 +48,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Configure MassTransit with RabbitMQ
+// Configure MassTransit with Azure Service Bus
 builder.Services.AddMassTransit(x =>
 {
     // Register event consumers
@@ -56,39 +56,16 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<OrderCreatedEventConsumer>();
     x.AddConsumer<PaymentProcessedEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        // Direct connection to RabbitMQ (bypass Aspire proxy for AMQP)
-        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost";
-        var rabbitPort = Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672";
-        
         var logger = context.GetService<ILogger<Program>>();
-        logger?.LogInformation("Using direct RabbitMQ connection to {Host}:{Port}", rabbitHost, rabbitPort);
+        var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        cfg.Host(rabbitHost, Convert.ToUInt16(rabbitPort), "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // Explicit endpoint configuration for event consumers
-        cfg.ReceiveEndpoint("inventory-service-product-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.ProductCreatedEvent>();
-            e.ConfigureConsumer<ProductCreatedEventConsumer>(context);
-        });
+        cfg.Host(connectionString);
 
-        cfg.ReceiveEndpoint("inventory-service-order-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.OrderCreatedEvent>();
-            e.ConfigureConsumer<OrderCreatedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("inventory-service-payment-processed", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.PaymentProcessedEvent>();
-            e.ConfigureConsumer<PaymentProcessedEventConsumer>(context);
-        });
+        cfg.ConfigureEndpoints(context);
     });
 });
 

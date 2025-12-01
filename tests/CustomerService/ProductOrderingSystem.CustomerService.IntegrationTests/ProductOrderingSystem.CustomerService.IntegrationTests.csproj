@@ -16,7 +16,7 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Testcontainers.MongoDb" />
-    <PackageReference Include="Testcontainers.RabbitMq" />
+
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>

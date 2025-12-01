@@ -37,36 +37,22 @@ builder.Services.Configure<StripeSettings>(
 
 builder.Services.AddScoped<IStripePaymentService, StripePaymentService>();
 
-// Configure MassTransit with RabbitMQ
+// Configure MassTransit with Azure Service Bus
 builder.Services.AddMassTransit(x =>
 {
     // Add consumers
     x.AddConsumer<OrderCreatedEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        // Get connection string from Aspire
+        var logger = context.GetService<ILogger<Program>>();
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        var logger = context.GetService<ILogger<Program>>();
-        logger?.LogInformation("RabbitMQ connection string from config: {ConnectionString}", 
-            connectionString ?? "NULL");
-        
-        // WORKAROUND: Aspire's proxied RabbitMQ connection fails with "connection.start was never received"
-        // Use the standalone RabbitMQ container directly on localhost:5672
-        logger?.LogWarning("Using direct RabbitMQ connection to localhost:5672 instead of Aspire proxy");
-        cfg.Host("localhost", "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // Explicit endpoint configuration to bind to correct MassTransit exchange names
-        cfg.ReceiveEndpoint("payment-service-order-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.OrderCreatedEvent>();
-            e.ConfigureConsumer<OrderCreatedEventConsumer>(context);
-        });
+        cfg.Host(connectionString);
+
+        cfg.ConfigureEndpoints(context);
     });
 });
 

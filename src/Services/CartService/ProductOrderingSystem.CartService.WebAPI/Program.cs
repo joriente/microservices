@@ -70,7 +70,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Configure RabbitMQ with MassTransit
+// Configure Azure Service Bus with MassTransit
 builder.Services.AddMassTransit(x =>
 {
     // Register event consumers
@@ -79,47 +79,16 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ProductDeletedEventConsumer>();
     x.AddConsumer<OrderCreatedEventConsumer>();
     
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
         var logger = context.GetService<ILogger<Program>>();
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        logger?.LogInformation("RabbitMQ connection string from config: {ConnectionString}", connectionString ?? "NULL");
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // WORKAROUND: Aspire's proxied RabbitMQ connection fails with "connection.start was never received"
-        // Use the standalone RabbitMQ container directly on localhost:5672
-        logger?.LogWarning("Using direct RabbitMQ connection to localhost:5672 instead of Aspire proxy");
-        cfg.Host("localhost", "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        cfg.Host(connectionString);
 
-        // Explicit endpoint configuration to bind to correct MassTransit exchange names
-        // MassTransit uses format: "Namespace.EventName" not just "EventName"
-        cfg.ReceiveEndpoint("cart-service-product-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.ProductCreatedEvent>();
-            e.ConfigureConsumer<ProductCreatedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("cart-service-product-updated", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.ProductUpdatedEvent>();
-            e.ConfigureConsumer<ProductUpdatedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("cart-service-product-deleted", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.ProductDeletedEvent>();
-            e.ConfigureConsumer<ProductDeletedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("cart-service-order-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.OrderCreatedEvent>();
-            e.ConfigureConsumer<OrderCreatedEventConsumer>(context);
-        });
+        cfg.ConfigureEndpoints(context);
     });
 });
 

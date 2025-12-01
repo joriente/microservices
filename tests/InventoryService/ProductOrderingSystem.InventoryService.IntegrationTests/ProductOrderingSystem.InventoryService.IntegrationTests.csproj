@@ -15,7 +15,7 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.MongoDb" />
-    <PackageReference Include="Testcontainers.RabbitMq" />
+
     <PackageReference Include="NSubstitute" />
   </ItemGroup>
 

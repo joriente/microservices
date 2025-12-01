@@ -35,32 +35,22 @@ builder.Services.AddMediatR(cfg =>
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssembly(typeof(CreateCustomerCommand).Assembly);
 
-// Add MassTransit with RabbitMQ
+// Add MassTransit with Azure Service Bus
 builder.Services.AddMassTransit(x =>
 {
     // Register consumers
     x.AddConsumer<OrderCreatedEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        // Direct connection to RabbitMQ (bypass Aspire proxy for AMQP)
-        var rabbitHost = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost";
-        var rabbitPort = Environment.GetEnvironmentVariable("RABBITMQ_PORT") ?? "5672";
+        var logger = context.GetService<ILogger<Program>>();
+        var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        Console.WriteLine($"Using direct RabbitMQ connection to {rabbitHost}:{rabbitPort}");
-        
-        cfg.Host(rabbitHost, Convert.ToUInt16(rabbitPort), "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // Configure explicit endpoints for consumers
-        cfg.ReceiveEndpoint("customer-service-order-created", e =>
-        {
-            e.Bind<ProductOrderingSystem.Shared.Contracts.Events.OrderCreatedEvent>();
-            e.ConfigureConsumer<OrderCreatedEventConsumer>(context);
-        });
+        cfg.Host(connectionString);
+
+        cfg.ConfigureEndpoints(context);
     });
 });
 

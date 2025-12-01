@@ -40,33 +40,22 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Register database seeder as a background service
 builder.Services.AddHostedService<ProductSeeder>();
 
-// Configure MassTransit with RabbitMQ
+// Configure MassTransit with Azure Service Bus
 builder.Services.AddMassTransit(x =>
 {
     // Add consumers
     x.AddConsumer<OrderCreatedEventConsumer>();
     x.AddConsumer<OrderCancelledEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        // Get connection string from Aspire - it provides this via .WithReference(rabbitMq)
+        var logger = context.GetService<ILogger<Program>>();
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        // Log the connection string for debugging
-        var logger = context.GetService<ILogger<Program>>();
-        logger?.LogInformation("RabbitMQ connection string from config: {ConnectionString}", 
-            connectionString ?? "NULL");
-        
-        // WORKAROUND: Aspire's proxied RabbitMQ connection fails with "connection.start was never received"
-        // Use the standalone RabbitMQ container directly on localhost:5672
-        logger?.LogWarning("Using direct RabbitMQ connection to localhost:5672 instead of Aspire proxy");
-        cfg.Host("localhost", "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // Configure endpoints
+        cfg.Host(connectionString);
+
         cfg.ConfigureEndpoints(context);
     });
 });

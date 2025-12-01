@@ -40,7 +40,7 @@ builder.Services.AddScoped<OrderDbContext>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IProductCacheRepository, ProductCacheRepository>();
 
-// Configure MassTransit with RabbitMQ
+// Configure MassTransit with Azure Service Bus
 builder.Services.AddMassTransit(x =>
 {
     // Add consumers for order compensation
@@ -54,55 +54,16 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ProductUpdatedEventConsumer>();
     x.AddConsumer<ProductDeletedEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAzureServiceBus((context, cfg) =>
     {
-        // Get connection string from Aspire - it provides this via .WithReference(rabbitMq)
+        var logger = context.GetService<ILogger<Program>>();
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         
-        // Log the connection string for debugging
-        var logger = context.GetService<ILogger<Program>>();
-        logger?.LogInformation("RabbitMQ connection string from config: {ConnectionString}", 
-            connectionString ?? "NULL");
-        
-        // WORKAROUND: Aspire's proxied RabbitMQ connection fails with "connection.start was never received"
-        // Use the standalone RabbitMQ container directly on localhost:5672
-        logger?.LogWarning("Using direct RabbitMQ connection to localhost:5672 instead of Aspire proxy");
-        cfg.Host("localhost", "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
 
-        // Configure endpoints with explicit exchange bindings
-        cfg.ReceiveEndpoint("order-service-product-created", e =>
-        {
-            e.Bind<ProductCreatedEvent>();
-            e.ConfigureConsumer<ProductCreatedEventConsumer>(context);
-        });
+        cfg.Host(connectionString);
 
-        cfg.ReceiveEndpoint("order-service-product-updated", e =>
-        {
-            e.Bind<ProductUpdatedEvent>();
-            e.ConfigureConsumer<ProductUpdatedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("order-service-product-deleted", e =>
-        {
-            e.Bind<ProductDeletedEvent>();
-            e.ConfigureConsumer<ProductDeletedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("order-service-product-reservation-failed", e =>
-        {
-            e.Bind<ProductReservationFailedEvent>();
-            e.ConfigureConsumer<ProductReservationFailedEventConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("order-service-payment-processed", e =>
-        {
-            e.Bind<PaymentProcessedEvent>();
-            e.ConfigureConsumer<PaymentProcessedEventConsumer>(context);
-        });
+        cfg.ConfigureEndpoints(context);
     });
 });
 

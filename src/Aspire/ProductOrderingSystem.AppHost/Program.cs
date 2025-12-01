@@ -8,11 +8,9 @@ var seq = builder.AddSeq("seq")
     .WithContainerName("ProductOrdering-seq")
     .WithLifetime(ContainerLifetime.Persistent);
 
-// Add RabbitMQ message broker with management UI  
-var rabbitMq = builder.AddRabbitMQ("messaging")
-    .WithContainerName("ProductOrdering-rabbitmq")
-    .WithManagementPlugin()
-    .PublishAsConnectionString();
+// Add Azure Service Bus emulator for messaging
+var serviceBus = builder.AddAzureServiceBus("messaging")
+    .RunAsEmulator();
 
 // Add MongoDB container with Aspire
 var mongodb = builder.AddMongoDB("mongodb")
@@ -36,62 +34,62 @@ var postgres = builder.AddPostgres("postgres")
 
 var inventoryDb = postgres.AddDatabase("inventorydb");
 
-// Add Identity Service with MongoDB and RabbitMQ
+// Add Identity Service with MongoDB and Azure Service Bus
 // Use the "http" launch profile to get correct port configuration
 var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service", launchProfileName: "http")
     .WithReference(identityDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Product Service with its own MongoDB database and RabbitMQ
+// Add Product Service with its own MongoDB database and Azure Service Bus
 var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service", launchProfileName: "http")
     .WithReference(productDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Order Service with its own MongoDB database and RabbitMQ
+// Add Order Service with its own MongoDB database and Azure Service Bus
 var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service", launchProfileName: "http")
     .WithReference(orderDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Cart Service with its own MongoDB database and RabbitMQ
+// Add Cart Service with its own MongoDB database and Azure Service Bus
 var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_WebAPI>("cart-service", launchProfileName: "http")
     .WithReference(cartDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Payment Service with its own MongoDB database and RabbitMQ
+// Add Payment Service with its own MongoDB database and Azure Service Bus
 var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentService_WebAPI>("payment-service", launchProfileName: "http")
     .WithReference(paymentDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Customer Service with its own MongoDB database and RabbitMQ
+// Add Customer Service with its own MongoDB database and Azure Service Bus
 var customerService = builder.AddProject<Projects.ProductOrderingSystem_CustomerService_WebAPI>("customer-service", launchProfileName: "http")
     .WithReference(customerDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
-// Add Inventory Service with its own PostgreSQL database and RabbitMQ
+// Add Inventory Service with its own PostgreSQL database and Azure Service Bus
 var inventoryService = builder.AddProject<Projects.ProductOrderingSystem_InventoryService>("inventory-service", launchProfileName: "http")
     .WithReference(inventoryDb)
-    .WithReference(rabbitMq)
+    .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(postgres)
-    .WaitFor(rabbitMq);
+    .WaitFor(serviceBus);
 
 // Add API Gateway with references to all services
 // Use a fixed HTTP endpoint so the frontend can reliably connect

@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="ErrorOr" />
     <PackageReference Include="MassTransit" />
-    <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" />
     <PackageReference Include="MongoDB.Driver" />
     <PackageReference Include="Stripe.net" />
     <PackageReference Include="Microsoft.Extensions.Options" />
