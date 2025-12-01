@@ -23,21 +23,21 @@ services.AddLogging(builder =>
 // Add configuration
 services.AddSingleton<IConfiguration>(configuration);
 
-// Configure MassTransit with Azure Service Bus
+// Configure MassTransit with RabbitMQ
 var publishEvents = configuration.GetValue<bool>("Seeding:PublishEvents");
 if (publishEvents)
 {
     services.AddMassTransit(x =>
     {
-        x.UsingAzureServiceBus((context, cfg) =>
+        x.UsingRabbitMq((context, cfg) =>
         {
             var connectionString = configuration.GetConnectionString("messaging");
+            var uri = new Uri(connectionString ?? "amqp://localhost:5672");
             
-            cfg.Host(connectionString, h =>
+            cfg.Host(uri, h =>
             {
-                h.RetryMinBackoff = TimeSpan.FromSeconds(2);
-                h.RetryMaxBackoff = TimeSpan.FromSeconds(30);
-                h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
+                h.Username("guest");
+                h.Password("guest");
             });
 
             cfg.ConfigureEndpoints(context);

@@ -41,40 +41,15 @@ builder.Services.AddMassTransit(x =>
     // Register consumers
     x.AddConsumer<OrderCreatedEventConsumer>();
 
-    x.UsingAzureServiceBus((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
-        var logger = context.GetService<ILogger<Program>>();
         var connectionString = builder.Configuration.GetConnectionString("messaging");
+        var uri = new Uri(connectionString ?? "amqp://localhost:5672");
         
-        logger?.LogInformation("Azure Service Bus connection string from config: {ConnectionString}", connectionString ?? "NULL");
-
-        cfg.Host(connectionString, h =>
+        cfg.Host(uri, h =>
         {
-            // Increase timeouts for emulator stability
-            h.RetryMinBackoff = TimeSpan.FromSeconds(2);
-            h.RetryMaxBackoff = TimeSpan.FromSeconds(30);
-            h.TransportType = Azure.Messaging.ServiceBus.ServiceBusTransportType.AmqpWebSockets;
-        });
-
-        // Disable prefetch to reduce emulator load
-        cfg.PrefetchCount = 0;
-        cfg.MaxConcurrentCalls = 1;
-
-        // Configure retry policy for transport failures
-        cfg.UseMessageRetry(r => 
-        {
-            r.Exponential(10, TimeSpan.FromSeconds(2), TimeSpan.FromMinutes(2), TimeSpan.FromSeconds(5));
-            r.Ignore<System.Net.Http.HttpRequestException>();
-            r.Ignore<Azure.RequestFailedException>();
-        });
-
-        // Add circuit breaker to prevent overwhelming the service bus
-        cfg.UseCircuitBreaker(cb =>
-        {
-            cb.TrackingPeriod = TimeSpan.FromMinutes(1);
-            cb.TripThreshold = 15;
-            cb.ActiveThreshold = 10;
-            cb.ResetInterval = TimeSpan.FromMinutes(5);
+            h.Username("guest");
+            h.Password("guest");
         });
 
         cfg.ConfigureEndpoints(context);

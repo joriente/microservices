@@ -12,7 +12,7 @@
     <PackageReference Include="Aspire.MongoDB.Driver" />
     <PackageReference Include="Bogus" />
     <PackageReference Include="ErrorOr" />
-    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

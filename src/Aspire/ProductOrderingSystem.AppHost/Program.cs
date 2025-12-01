@@ -8,9 +8,11 @@ var seq = builder.AddSeq("seq")
     .WithContainerName("ProductOrdering-seq")
     .WithLifetime(ContainerLifetime.Persistent);
 
-// Add Azure Service Bus emulator for messaging
-var serviceBus = builder.AddAzureServiceBus("messaging")
-    .RunAsEmulator();
+// Add RabbitMQ for messaging (ARM64 compatible for Raspberry Pi)
+var messaging = builder.AddRabbitMQ("messaging")
+    .WithContainerName("ProductOrdering-rabbitmq")
+    .WithManagementPlugin()  // Adds RabbitMQ management UI at http://localhost:15672
+    .WithLifetime(ContainerLifetime.Persistent);
 
 // Add MongoDB container with Aspire
 var mongodb = builder.AddMongoDB("mongodb")
@@ -37,68 +39,68 @@ var inventoryDb = postgres.AddDatabase("inventorydb");
 // Add Data Seeder - runs once to seed initial data
 var dataSeeder = builder.AddProject<Projects.ProductOrderingSystem_DataSeeder>("data-seeder")
     .WithReference(mongodb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
-// Add Identity Service with MongoDB and Azure Service Bus
+// Add Identity Service with MongoDB and RabbitMQ
 // Use the "http" launch profile to get correct port configuration
 var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service", launchProfileName: "http")
     .WithReference(identityDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus)
+    .WaitFor(messaging)
     .WaitFor(dataSeeder);  // Wait for seeder to complete
 
-// Add Product Service with its own MongoDB database and Azure Service Bus
+// Add Product Service with its own MongoDB database and RabbitMQ
 var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service", launchProfileName: "http")
     .WithReference(productDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus)
+    .WaitFor(messaging)
     .WaitFor(dataSeeder);  // Wait for seeder to complete
 
-// Add Order Service with its own MongoDB database and Azure Service Bus
+// Add Order Service with its own MongoDB database and RabbitMQ
 var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service", launchProfileName: "http")
     .WithReference(orderDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
-// Add Cart Service with its own MongoDB database and Azure Service Bus
+// Add Cart Service with its own MongoDB database and RabbitMQ
 var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_WebAPI>("cart-service", launchProfileName: "http")
     .WithReference(cartDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
-// Add Payment Service with its own MongoDB database and Azure Service Bus
+// Add Payment Service with its own MongoDB database and RabbitMQ
 var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentService_WebAPI>("payment-service", launchProfileName: "http")
     .WithReference(paymentDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
-// Add Customer Service with its own MongoDB database and Azure Service Bus
+// Add Customer Service with its own MongoDB database and RabbitMQ
 var customerService = builder.AddProject<Projects.ProductOrderingSystem_CustomerService_WebAPI>("customer-service", launchProfileName: "http")
     .WithReference(customerDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
-// Add Inventory Service with its own PostgreSQL database and Azure Service Bus
+// Add Inventory Service with its own PostgreSQL database and RabbitMQ
 var inventoryService = builder.AddProject<Projects.ProductOrderingSystem_InventoryService>("inventory-service", launchProfileName: "http")
     .WithReference(inventoryDb)
-    .WithReference(serviceBus)
+    .WithReference(messaging)
     .WithReference(seq)
     .WaitFor(postgres)
-    .WaitFor(serviceBus);
+    .WaitFor(messaging);
 
 // Add API Gateway with references to all services
 // Use a fixed HTTP endpoint so the frontend can reliably connect

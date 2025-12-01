@@ -5,14 +5,13 @@
   <ItemGroup>
     <!-- Aspire Packages -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.0.1" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.0.1" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.0.1" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.0.1" />
     <PackageVersion Include="Aspire.Hosting.Seq" Version="13.0.1" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.0.1" />
     <PackageVersion Include="Aspire.MongoDB.Driver" Version="13.0.1" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.0.1" />
-    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.18.0" />
     
     <!-- MongoDB Packages -->
     <PackageVersion Include="MongoDB.Driver" Version="3.5.2" />
@@ -20,7 +19,7 @@
     
     <!-- MassTransit Packages -->
     <PackageVersion Include="MassTransit" Version="8.5.7" />
-    <PackageVersion Include="MassTransit.Azure.ServiceBus.Core" Version="8.5.7" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.7" />
     
     <!-- MediatR Packages -->
     <PackageVersion Include="MediatR" Version="13.1.0" />
