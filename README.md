@@ -57,6 +57,17 @@ This single command starts:
 **API Documentation:**
 - Each service has Scalar docs at `/scalar/v1` endpoint
 
+### 5.5️⃣ Seed Demo Data (Optional)
+
+Run the data seeder to populate 100 sample products:
+
+```bash
+cd src/Tools/ProductOrderingSystem.DataSeeder
+dotnet run
+```
+
+See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) for configuration options.
+
 ### 6️⃣ Test the System
 
 **Pre-seeded Test Users:**

@@ -2,6 +2,7 @@ using Bogus;
 using MediatR;
 using ProductOrderingSystem.ProductService.Application.Commands.Products;
 using ProductOrderingSystem.ProductService.Application.Queries.Products;
+using ProductOrderingSystem.ProductService.Domain.Repositories;
 
 namespace ProductOrderingSystem.ProductService.WebAPI.Data;
 
@@ -9,15 +10,25 @@ public class ProductSeeder : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ProductSeeder> _logger;
+    private readonly IConfiguration _configuration;
 
-    public ProductSeeder(IServiceProvider serviceProvider, ILogger<ProductSeeder> logger)
+    public ProductSeeder(IServiceProvider serviceProvider, ILogger<ProductSeeder> logger, IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _configuration = configuration;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Check if seeding is enabled
+        var seedingEnabled = _configuration.GetValue<bool>("Seeding:Enabled", false);
+        if (!seedingEnabled)
+        {
+            _logger.LogInformation("ProductSeeder: Seeding is disabled in configuration. Use the separate DataSeeder project to seed data.");
+            return;
+        }
+
         // Wait longer for MongoDB and RabbitMQ to be fully ready
         _logger.LogInformation("ProductSeeder: Waiting for infrastructure to be ready...");
         await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
@@ -27,7 +38,7 @@ public class ProductSeeder : BackgroundService
 
         try
         {
-            await SeedAsync(mediator, stoppingToken);
+            await SeedAsync(scope, mediator, stoppingToken);
         }
         catch (Exception ex)
         {
@@ -35,7 +46,7 @@ public class ProductSeeder : BackgroundService
         }
     }
 
-    private async Task SeedAsync(IMediator mediator, CancellationToken cancellationToken)
+    private async Task SeedAsync(IServiceScope scope, IMediator mediator, CancellationToken cancellationToken)
     {
         // Retry logic for infrastructure connection
         var maxRetries = 20;
@@ -59,10 +70,28 @@ public class ProductSeeder : BackgroundService
                 
                 var searchResult = await mediator.Send(searchQuery, cancellationToken);
                 
+                var expectedProductCount = _configuration.GetValue<int>("Seeding:ProductCount", 100);
+                
+                if (searchResult.TotalCount >= expectedProductCount)
+                {
+                    _logger.LogInformation("Database already contains {Count} products (expected: {Expected}). Skipping seed.", 
+                        searchResult.TotalCount, expectedProductCount);
+                    return;
+                }
+                
                 if (searchResult.TotalCount > 0)
                 {
-                    _logger.LogInformation("Database already contains {Count} products. Skipping seed.", searchResult.TotalCount);
-                    return;
+                    _logger.LogWarning("Database contains {Count} products but expected {Expected}. Clearing existing products and re-seeding...", 
+                        searchResult.TotalCount, expectedProductCount);
+                    
+                    // Get the repository to clear existing products
+                    var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
+                    var existingProducts = await productRepository.GetAllAsync();
+                    foreach (var product in existingProducts)
+                    {
+                        await productRepository.DeleteAsync(product.Id);
+                    }
+                    _logger.LogInformation("Cleared {Count} existing products", searchResult.TotalCount);
                 }
 
                 _logger.LogInformation("Seeding product database with sample data via MediatR commands...");
@@ -82,7 +111,9 @@ public class ProductSeeder : BackgroundService
                 var productData = GenerateProductData(100, categories);
 
                 // Create products using MediatR commands - this will trigger domain events
+                // Use CancellationToken.None to ensure seeding completes even if the application startup cancellation is triggered
                 int successCount = 0;
+                int failureCount = 0;
                 foreach (var data in productData)
                 {
                     try
@@ -96,24 +127,35 @@ public class ProductSeeder : BackgroundService
                             data.ImageUrl
                         );
 
-                        var result = await mediator.Send(command, cancellationToken);
+                        // Don't use the cancellation token here to allow seeding to complete
+                        var result = await mediator.Send(command, CancellationToken.None);
                         
                         if (!result.IsError)
                         {
                             successCount++;
+                            if (successCount % 10 == 0)
+                            {
+                                _logger.LogInformation("Progress: {SuccessCount}/{TotalCount} products seeded", successCount, productData.Count);
+                            }
                         }
                         else
                         {
+                            failureCount++;
                             _logger.LogWarning("Failed to seed product {Name}: {Error}", data.Name, result.FirstError.Description);
                         }
+                        
+                        // Small delay to avoid overwhelming MongoDB
+                        await Task.Delay(50, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogWarning(ex, "Exception seeding product {Name}", data.Name);
                     }
                 }
 
-                _logger.LogInformation("Successfully seeded {SuccessCount}/{TotalCount} products", successCount, productData.Count);
+                _logger.LogInformation("✓ Seeding completed: {SuccessCount} products created, {FailureCount} failures out of {TotalCount} total", 
+                    successCount, failureCount, productData.Count);
                 return;
             }
             catch (TimeoutException ex) when (attempt < maxRetries)

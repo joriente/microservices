@@ -34,6 +34,13 @@ var postgres = builder.AddPostgres("postgres")
 
 var inventoryDb = postgres.AddDatabase("inventorydb");
 
+// Add Data Seeder - runs once to seed initial data
+var dataSeeder = builder.AddProject<Projects.ProductOrderingSystem_DataSeeder>("data-seeder")
+    .WithReference(mongodb)
+    .WithReference(serviceBus)
+    .WaitFor(mongodb)
+    .WaitFor(serviceBus);
+
 // Add Identity Service with MongoDB and Azure Service Bus
 // Use the "http" launch profile to get correct port configuration
 var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service", launchProfileName: "http")
@@ -41,7 +48,8 @@ var identityService = builder.AddProject<Projects.ProductOrderingSystem_Identity
     .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(serviceBus)
+    .WaitFor(dataSeeder);  // Wait for seeder to complete
 
 // Add Product Service with its own MongoDB database and Azure Service Bus
 var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service", launchProfileName: "http")
@@ -49,7 +57,8 @@ var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductSe
     .WithReference(serviceBus)
     .WithReference(seq)
     .WaitFor(mongodb)
-    .WaitFor(serviceBus);
+    .WaitFor(serviceBus)
+    .WaitFor(dataSeeder);  // Wait for seeder to complete
 
 // Add Order Service with its own MongoDB database and Azure Service Bus
 var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service", launchProfileName: "http")
