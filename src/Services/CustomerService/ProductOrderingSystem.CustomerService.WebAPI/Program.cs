@@ -15,6 +15,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations
 builder.AddServiceDefaults();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .WithExposedHeaders("X-Pagination");
+    });
+});
+
 // MongoDB - use "customerdb" to match the AppHost database reference
 builder.AddMongoDBClient("customerdb");
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
@@ -97,6 +109,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -32,7 +32,7 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials()
-              .WithExposedHeaders("Pagination", "Location"); // Expose custom headers including Location for REST
+              .WithExposedHeaders("X-Pagination", "Location"); // Expose custom headers including Location for REST
     });
 });
 

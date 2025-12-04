@@ -3,8 +3,9 @@
 
 $ErrorActionPreference = "Stop"
 
-$mavenVersion = "3.9.6"
+$mavenVersion = "3.9.9"
 $mavenDownloadUrl = "https://dlcdn.apache.org/maven/maven-3/$mavenVersion/binaries/apache-maven-$mavenVersion-bin.zip"
+$mavenDownloadUrlBackup = "https://archive.apache.org/dist/maven/maven-3/$mavenVersion/binaries/apache-maven-$mavenVersion-bin.zip"
 $installPath = "C:\Program Files\Maven"
 $tempZip = "$env:TEMP\apache-maven-$mavenVersion-bin.zip"
 
@@ -26,8 +27,15 @@ try {
     Invoke-WebRequest -Uri $mavenDownloadUrl -OutFile $tempZip -UseBasicParsing
     Write-Host "✓ Maven downloaded successfully" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Failed to download Maven: $_" -ForegroundColor Red
-    exit 1
+    Write-Host "Primary download failed. Trying backup mirror..." -ForegroundColor Yellow
+    try {
+        Invoke-WebRequest -Uri $mavenDownloadUrlBackup -OutFile $tempZip -UseBasicParsing
+        Write-Host "✓ Maven downloaded successfully from backup mirror" -ForegroundColor Green
+    } catch {
+        Write-Host "✗ Failed to download Maven from both mirrors: $_" -ForegroundColor Red
+        Write-Host "Please download manually from: https://maven.apache.org/download.cgi" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Create installation directory

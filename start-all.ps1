@@ -133,36 +133,77 @@ switch ($choice) {
         Write-Host "Press Ctrl+C to stop all services" -ForegroundColor Yellow
         Write-Host ""
         
-        # Start NotificationService (Java) in background
+        # Start Aspire AppHost first
+        Write-Host "Starting Aspire AppHost..." -ForegroundColor Yellow
+        Push-Location "src\Aspire\ProductOrderingSystem.AppHost"
+        
+        # Start Aspire in background
+        $aspireJob = Start-Job -ScriptBlock {
+            param($path)
+            Set-Location $path
+            dotnet run
+        } -ArgumentList (Get-Location).Path
+        
+        # Wait for Aspire to start and create RabbitMQ container
+        Write-Host "Waiting for RabbitMQ container to be ready..." -ForegroundColor Yellow
+        $maxWaitSeconds = 60
+        $waited = 0
+        $rabbitmqPort = $null
+        
+        while ($waited -lt $maxWaitSeconds) {
+            Start-Sleep -Seconds 2
+            $waited += 2
+            
+            # Check if RabbitMQ container exists and is running
+            $container = docker ps --filter "name=ProductOrdering-rabbitmq" --format "{{.Names}}" 2>$null
+            if ($container) {
+                # Get the mapped port
+                $portMapping = docker port ProductOrdering-rabbitmq 5672 2>$null
+                if ($portMapping) {
+                    $rabbitmqPort = ($portMapping -split ':')[1]
+                    Write-Host "✓ RabbitMQ ready on port $rabbitmqPort" -ForegroundColor Green
+                    break
+                }
+            }
+        }
+        
+        Pop-Location
+        
+        if (-not $rabbitmqPort) {
+            Write-Host "⚠ Could not detect RabbitMQ port, using default 5672" -ForegroundColor Yellow
+            $rabbitmqPort = "5672"
+        }
+        
+        # Start NotificationService (Java) with RabbitMQ port
         Write-Host "Starting NotificationService (Java)..." -ForegroundColor Yellow
         $notificationServicePath = "src\Services\NotificationService"
         $notificationServiceJar = "$notificationServicePath\target\notification-service-1.0.0.jar"
         
         if (Test-Path $notificationServiceJar) {
-            Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$notificationServicePath'; java -jar target\notification-service-1.0.0.jar" -WindowStyle Normal
+            # Set RabbitMQ environment variables for Java service
+            $env:RABBITMQ_HOST = "localhost"
+            $env:RABBITMQ_PORT = $rabbitmqPort
+            
+            Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:RABBITMQ_HOST='localhost'; `$env:RABBITMQ_PORT='$rabbitmqPort'; cd '$notificationServicePath'; java -jar target\notification-service-1.0.0.jar" -WindowStyle Normal
             
             Write-Host "✓ NotificationService started in new window" -ForegroundColor Green
-            Write-Host "  📧 NotificationService: Listening on RabbitMQ" -ForegroundColor Gray
+            Write-Host "  📧 NotificationService: Connecting to RabbitMQ at localhost:$rabbitmqPort" -ForegroundColor Gray
         } else {
             Write-Host "⚠ NotificationService JAR not found. Skipping..." -ForegroundColor Yellow
             Write-Host "  Run './Start-all.ps1' without -SkipBuild to build it" -ForegroundColor Gray
         }
         
         Write-Host ""
+        Write-Host "Aspire Dashboard is running. Press Ctrl+C in this window to stop all services." -ForegroundColor Yellow
+        Write-Host ""
         
-        Push-Location "src\Aspire\ProductOrderingSystem.AppHost"
         try {
-            dotnet run
+            # Wait for the Aspire job to complete (it won't unless stopped)
+            Wait-Job -Job $aspireJob
         } finally {
-            Pop-Location
-            # Stop NotificationService job when Aspire stops
-            if ($notificationJob) {
-                Write-Host ""
-                Write-Host "Stopping NotificationService..." -ForegroundColor Yellow
-                Stop-Job -Id $notificationJob.Id
-                Remove-Job -Id $notificationJob.Id
-                Write-Host "✓ NotificationService stopped" -ForegroundColor Green
-            }
+            # Cleanup
+            Stop-Job -Job $aspireJob -ErrorAction SilentlyContinue
+            Remove-Job -Job $aspireJob -ErrorAction SilentlyContinue
         }
     }
     "2" {

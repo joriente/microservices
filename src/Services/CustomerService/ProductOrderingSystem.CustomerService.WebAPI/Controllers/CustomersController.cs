@@ -47,7 +47,7 @@ public class CustomersController : ControllerBase
                 };
 
                 // Add pagination metadata to response header as JSON
-                Response.Headers["Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
+                Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
 
                 // Return only the customers array in the body
                 return Ok(success.Customers);

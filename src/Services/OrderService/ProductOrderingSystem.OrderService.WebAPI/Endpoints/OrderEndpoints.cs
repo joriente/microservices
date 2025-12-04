@@ -145,7 +145,7 @@ public static class OrderEndpoints
                 );
 
                 // Add pagination metadata to response header as JSON
-                httpContext.Response.Headers["Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
+                httpContext.Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
 
                 // Return only the orders list in the body
                 var orders = queryResult.Orders.Select(MapToDto).ToList();

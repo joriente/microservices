@@ -75,7 +75,8 @@ builder.Services.AddCors(options =>
     {
         builder.AllowAnyOrigin()
                .AllowAnyMethod()
-               .AllowAnyHeader();
+               .AllowAnyHeader()
+               .WithExposedHeaders("X-Pagination"); // Expose custom pagination header
     });
 });
 

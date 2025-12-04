@@ -26,6 +26,18 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .WithExposedHeaders("X-Pagination");
+    });
+});
+
 // Add MongoDB
 builder.AddMongoDBClient("orderdb");
 
@@ -104,6 +116,7 @@ if (app.Environment.IsDevelopment())
 
 // Disable HTTPS redirection when running behind API Gateway
 // app.UseHttpsRedirection();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -8,45 +8,71 @@ A production-ready e-commerce microservices application built with .NET 9, demon
 Install these before starting:
 - **[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)** 
 - **[Java 21 JDK](https://adoptium.net/)** (for NotificationService - Spring Boot 3.4)
-- **[Maven 3.9+](https://maven.apache.org/download.cgi)** (for building Java service)
-- **[Docker Desktop](https://www.docker.com/products/docker-desktop)** (for databases and message broker)
+- **[Apache Maven](https://maven.apache.org/download.cgi)** - Use our automated installer (see step 2.5) OR download manually
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop)** ⚠️ **Must be running before starting services**
 - **IDE**: Visual Studio 2022, VS Code with C# Dev Kit, or Rider (+ IntelliJ IDEA/VS Code with Java extensions for NotificationService)
 
 ### 2️⃣ Clone & Setup
-```bash
+```powershell
 git clone <repository-url>
 cd microservices
 ```
 
-### 3️⃣ Configure API Keys
+### 2.5️⃣ Install Maven (Automated - Windows Only)
+```powershell
+.\install-maven.ps1
+```
+This script automatically downloads Maven 3.9.9 with fallback mirrors and configures your PATH. No manual setup needed!
+
+> 💡 **Mac/Linux users**: Install Maven using your package manager (brew, apt, etc.)
+
+### 3️⃣ Trust HTTPS Development Certificates
+```powershell
+dotnet dev-certs https --clean
+dotnet dev-certs https --trust
+```
+Click **Yes** when prompted. This prevents SSL certificate errors in Aspire Dashboard.
+
+> ⚠️ **Important**: Without this step, you may see SSL/TLS errors when accessing the Aspire Dashboard.
+
+### 4️⃣ Configure API Keys
 Run the interactive setup script:
-```bash
+```powershell
 .\Setup-UserSecrets.ps1
 ```
 Enter your **Stripe test API keys** when prompted ([Get keys here](https://dashboard.stripe.com/test/apikeys))
 
 > 💡 **New to Stripe?** Use test mode keys (start with `pk_test_` and `sk_test_`). See [API-KEYS-SETUP.md](API-KEYS-SETUP.md) for details.
 
-### 4️⃣ Start Everything
-```bash
+### 5️⃣ Start Everything (Single Command)
+
+⚠️ **Critical**: Ensure Docker Desktop is running and fully started before proceeding!
+
+```powershell
 .\Start-all.ps1
 ```
 
-This single command starts:
-- ✅ 7 .NET Microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity)
-- ✅ 1 Java Microservice (Notification - email notifications)
-- ✅ API Gateway (single entry point)
-- ✅ Blazor WebAssembly UI
-- ✅ PostgreSQL & MongoDB databases
-- ✅ RabbitMQ message broker
-- ✅ Seq centralized logging
-- ✅ Management UIs (pgAdmin, Mongo Express, RabbitMQ Management)
+This automated script handles everything:
+- ✅ Starts Aspire AppHost (orchestrates all containers)
+- ✅ Spins up infrastructure: RabbitMQ, MongoDB, PostgreSQL, Seq
+- ✅ Waits for containers to be healthy
+- ✅ Detects RabbitMQ dynamic port (automatically configured)
+- ✅ Starts all .NET microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity)
+- ✅ Starts Java NotificationService with correct messaging configuration
+- ✅ Starts API Gateway and Blazor WebAssembly UI
+- ✅ Starts management UIs (pgAdmin, Mongo Express, RabbitMQ Management)
 
-### 5️⃣ Access the System
+**What's automated for you:**
+- RabbitMQ port detection (no manual configuration needed)
+- Container health checks and readiness waiting
+- Service startup sequencing
+- Environment variable configuration for cross-platform messaging
+
+### 6️⃣ Access the System
 
 **User Interfaces:**
 - 🌐 **Web App**: http://localhost:5261 (main application)
-- 📊 **Aspire Dashboard**: http://localhost:15888 (service monitoring)
+- 📊 **Aspire Dashboard**: http://localhost:15888 (service monitoring - check console for actual URL)
 - 📋 **Seq Logs**: http://localhost:5341 (centralized logs)
 
 **Management Tools:**
@@ -57,18 +83,18 @@ This single command starts:
 **API Documentation:**
 - Each service has Scalar docs at `/scalar/v1` endpoint
 
-### 5.5️⃣ Seed Demo Data (Optional)
+### 6.5️⃣ Seed Demo Data (Optional)
 
 Run the data seeder to populate 100 sample products:
 
-```bash
+```powershell
 cd src/Tools/ProductOrderingSystem.DataSeeder
 dotnet run
 ```
 
 See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) for configuration options.
 
-### 6️⃣ Test the System
+### 7️⃣ Test the System
 
 **Pre-seeded Test Users:**
 - 👤 **Admin User** - Username: `admin`, Password: `P@ssw0rd` (Full access to admin panel)
@@ -274,7 +300,7 @@ By exploring this project, you'll learn:
 ## 🔧 Common Tasks
 
 ### View User Secrets
-```bash
+```powershell
 cd src/Services/PaymentService/ProductOrderingSystem.PaymentService.WebAPI
 dotnet user-secrets list
 ```
@@ -291,7 +317,7 @@ Open Seq at http://localhost:5341 and search by:
 3. See messages in queues like `inventory-service-order-created`
 
 ### Rebuild Everything
-```bash
+```powershell
 dotnet clean
 dotnet build
 .\Start-all.ps1
@@ -303,23 +329,176 @@ dotnet build
 
 ## 🐛 Troubleshooting
 
-### "Stripe keys not found"
-Run: `.\Setup-UserSecrets.ps1` to configure your API keys
+### Docker Desktop Issues
 
-### Services won't start
+**Problem**: Services fail to start with "Docker daemon not running" or container connection errors
+
+**Solution**: 
 1. Ensure Docker Desktop is running
-2. Check port availability (5341, 15672, 27017, etc.)
-3. Run `docker ps` to verify containers are running
+2. Wait for Docker Desktop to fully start (green indicator in system tray)
+3. Verify with: `docker ps`
+4. If still failing, restart Docker Desktop
 
-### Build errors
-```bash
-dotnet clean
-dotnet restore
-dotnet build
+### Maven Installation Issues
+
+**Problem**: Getting HTTP 404 errors when trying to install Maven manually
+
+**Solution**: Use the automated installer script:
+```powershell
+.\install-maven.ps1
+```
+This script uses Maven 3.9.9 with fallback mirrors (apache.org archives) to handle download failures.
+
+### SSL/HTTPS Certificate Errors in Aspire Dashboard
+
+**Problem**: Seeing `UntrustedRoot` or SSL certificate validation errors when accessing Aspire Dashboard
+
+**Solution**: Regenerate and trust development certificates:
+```powershell
+dotnet dev-certs https --clean
+dotnet dev-certs https --trust
+```
+Click **Yes** when prompted. Restart the application after this step.
+
+**Why this happens**: Development certificates can become untrusted or corrupted. This is a one-time fix.
+
+### RabbitMQ Connection Refused (Java NotificationService)
+
+**Problem**: Java NotificationService shows `Connection refused` on localhost:5672
+
+**Root Cause**: Aspire assigns RabbitMQ dynamic ports, but Java service expects fixed port 5672
+
+**Solution**: This is already fixed in `start-all.ps1` which automatically:
+1. Waits for RabbitMQ container to start
+2. Detects the dynamic port using `docker port ProductOrdering-rabbitmq 5672`
+3. Sets `RABBITMQ_PORT` environment variable for Java service
+
+**Manual check**: If needed, find the port manually:
+```powershell
+docker port ProductOrdering-rabbitmq 5672
 ```
 
-### Can't access Aspire Dashboard
-Check console output for the actual URL (usually http://localhost:15888)
+### "Stripe keys not found"
+
+**Problem**: PaymentService fails with missing API key errors
+
+**Solution**: Configure your Stripe test API keys:
+```powershell
+.\Setup-UserSecrets.ps1
+```
+
+Get test keys from [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys) (they start with `pk_test_` and `sk_test_`).
+
+### Services Won't Start
+
+**Common causes and solutions**:
+
+1. **Port conflicts**: Another application is using required ports
+   - Check: `netstat -ano | findstr :5261` (or other port)
+   - Fix: Stop the conflicting application
+
+2. **Containers not running**: Infrastructure containers failed to start
+   - Check: `docker ps` to see running containers
+   - Fix: Restart Docker Desktop, then run `.\Start-all.ps1` again
+
+3. **Build errors**: Code compilation issues
+   - Fix: Clean and rebuild:
+   ```powershell
+   dotnet clean
+   dotnet restore
+   dotnet build
+   ```
+
+### Can't Access Aspire Dashboard
+
+**Problem**: http://localhost:15888 doesn't work
+
+**Solution**: Aspire sometimes uses a different port. Check the console output when starting for the actual URL:
+```
+Now listening on: http://localhost:17234
+```
+
+### X-Pagination Header Not Visible in Browser
+
+**Problem**: Custom pagination headers not accessible to JavaScript/browser clients
+
+**Solution**: This is already fixed. All services now expose `X-Pagination` header via CORS configuration.
+
+**How it was fixed**: Added `.WithExposedHeaders("X-Pagination")` to CORS policies in all services.
+
+### Build Errors After Package Updates
+
+**Problem**: Compilation errors after updating NuGet packages
+
+**Solution**: 
+1. Check `Directory.Packages.props` for version compatibility
+2. Current packages are on latest stable .NET 9 compatible versions
+3. Major version updates (MassTransit 9.0, Stripe.net 50.x) may have breaking changes
+4. Stick with current versions unless you need specific new features
+
+### Java NotificationService Build Fails
+
+**Problem**: Maven build errors or missing dependencies
+
+**Solution**:
+```powershell
+cd src/Services/NotificationService
+mvn clean install
+```
+
+If still failing, ensure:
+- Java 21 JDK is installed: `java -version`
+- Maven is installed: `mvn -version` 
+- Use our installer: `.\install-maven.ps1`
+
+### Database Connection Errors
+
+**Problem**: Services can't connect to MongoDB or PostgreSQL
+
+**Solution**:
+1. Verify containers are running: `docker ps | findstr mongo` and `docker ps | findstr postgres`
+2. Check Aspire dashboard for container health
+3. Restart infrastructure: Stop all services, then run `.\Start-all.ps1`
+
+### Event Messages Not Being Consumed
+
+**Problem**: Events published but not consumed by other services
+
+**Diagnosis**:
+1. Open RabbitMQ Management: http://localhost:15672 (guest/guest)
+2. Check Queues tab - are messages accumulating?
+3. Check Connections tab - are all services connected?
+
+**Common causes**:
+- Consumer service not running
+- Exchange/queue binding misconfigured
+- Event contract version mismatch
+
+**Solution**: Check Seq logs for the specific service to see consumer errors.
+
+### Helpful Commands
+
+**View all running containers:**
+```powershell
+docker ps
+```
+
+**View container logs:**
+```powershell
+docker logs ProductOrdering-rabbitmq
+docker logs ProductOrdering-mongodb
+```
+
+**Restart all containers:**
+```powershell
+docker restart $(docker ps -q)
+```
+
+**Clean Docker (nuclear option):**
+```powershell
+.\Cleanup-Docker.ps1  # Removes all containers, volumes, and networks
+```
+⚠️ **Warning**: This deletes all data. You'll need to reseed after this.
 
 ## 🤝 Contributing
 

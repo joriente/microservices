@@ -1,4 +1,13 @@
+using System.Net;
+
 var builder = DistributedApplication.CreateBuilder(args);
+
+// Fix for Aspire 9.x SSL certificate validation issue in development
+// Allow insecure HTTP/2 for development dashboard communication
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+// Disable HTTPS certificate validation for development
+Environment.SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_DANGEROUSACCEPTANYSERVERCERTIFICATE", "true");
 
 // Configure container names with ProductOrdering prefix to group in Docker Desktop
 builder.Configuration["AppHost:ContainerRegistry"] = "ProductOrdering";
@@ -12,7 +21,8 @@ var seq = builder.AddSeq("seq")
 var messaging = builder.AddRabbitMQ("messaging")
     .WithContainerName("ProductOrdering-rabbitmq")
     .WithManagementPlugin()  // Adds RabbitMQ management UI at http://localhost:15672
-    .WithLifetime(ContainerLifetime.Persistent);
+    .WithLifetime(ContainerLifetime.Persistent)
+    .PublishAsConnectionString();
 
 // Add MongoDB container with Aspire
 var mongodb = builder.AddMongoDB("mongodb")
