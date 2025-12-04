@@ -72,6 +72,7 @@ public class OrderCreatedEventConsumerTests
         // Verify the message details
         var consumedMessage = consumerHarness.Consumed.Select<OrderCreatedEvent>().First();
         Assert.Equal(orderId, consumedMessage.Context.Message.OrderId);
+        Assert.NotNull(consumedMessage.Context.Message.Items);
         Assert.Equal(productId, consumedMessage.Context.Message.Items.First().ProductId);
     }
 
@@ -170,6 +171,7 @@ public class OrderCreatedEventConsumerTests
         Assert.True(await consumerHarness.Consumed.Any<OrderCreatedEvent>());
 
         var consumedEvent = consumerHarness.Consumed.Select<OrderCreatedEvent>().First();
+        Assert.NotNull(consumedEvent.Context.Message.Items);
         Assert.Equal(3, consumedEvent.Context.Message.Items.Count);
         Assert.Equal(130m, consumedEvent.Context.Message.TotalAmount);
     }

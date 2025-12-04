@@ -25,14 +25,14 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
         _logger.LogInformation(
             "Received OrderCreatedEvent for Order {OrderId} with {ItemCount} items. Total: {TotalAmount:C}",
             order.OrderId,
-            order.Items.Count,
+            order.Items?.Count ?? 0,
             order.TotalAmount);
 
         var reservedProducts = new List<(Guid ProductId, int Quantity)>();
         var firstFailure = false;
 
         // Process each order item and reserve stock
-        foreach (var item in order.Items)
+        foreach (var item in order.Items ?? [])
         {
             try
             {

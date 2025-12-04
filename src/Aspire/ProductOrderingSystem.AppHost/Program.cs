@@ -12,11 +12,6 @@ Environment.SetEnvironmentVariable("DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_DA
 // Configure container names with ProductOrdering prefix to group in Docker Desktop
 builder.Configuration["AppHost:ContainerRegistry"] = "ProductOrdering";
 
-// Add Seq for centralized logging
-var seq = builder.AddSeq("seq")
-    .WithContainerName("ProductOrdering-seq")
-    .WithLifetime(ContainerLifetime.Persistent);
-
 // Add RabbitMQ for messaging (ARM64 compatible for Raspberry Pi)
 var messaging = builder.AddRabbitMQ("messaging")
     .WithContainerName("ProductOrdering-rabbitmq")
@@ -58,7 +53,6 @@ var dataSeeder = builder.AddProject<Projects.ProductOrderingSystem_DataSeeder>("
 var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service", launchProfileName: "http")
     .WithReference(identityDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging)
     .WaitFor(dataSeeder);  // Wait for seeder to complete
@@ -67,7 +61,6 @@ var identityService = builder.AddProject<Projects.ProductOrderingSystem_Identity
 var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service", launchProfileName: "http")
     .WithReference(productDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging)
     .WaitFor(dataSeeder);  // Wait for seeder to complete
@@ -76,7 +69,6 @@ var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductSe
 var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service", launchProfileName: "http")
     .WithReference(orderDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
@@ -84,7 +76,6 @@ var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderServic
 var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_WebAPI>("cart-service", launchProfileName: "http")
     .WithReference(cartDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
@@ -92,7 +83,6 @@ var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_
 var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentService_WebAPI>("payment-service", launchProfileName: "http")
     .WithReference(paymentDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
@@ -100,7 +90,6 @@ var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentSe
 var customerService = builder.AddProject<Projects.ProductOrderingSystem_CustomerService_WebAPI>("customer-service", launchProfileName: "http")
     .WithReference(customerDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
@@ -108,7 +97,6 @@ var customerService = builder.AddProject<Projects.ProductOrderingSystem_Customer
 var inventoryService = builder.AddProject<Projects.ProductOrderingSystem_InventoryService>("inventory-service", launchProfileName: "http")
     .WithReference(inventoryDb)
     .WithReference(messaging)
-    .WithReference(seq)
     .WaitFor(postgres)
     .WaitFor(messaging);
 

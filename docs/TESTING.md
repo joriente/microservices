@@ -402,10 +402,10 @@ When running integration tests with Aspire:
 - Verify queues are created
 - Monitor message rates
 
-### Seq Logs
-- Centralized logging: http://localhost:5341
+### Aspire Dashboard
+- Centralized logging and telemetry: http://localhost:15888
 - Search by OrderId, CustomerId
-- Filter by log level
+- Filter by log level and service
 
 ## CI/CD Integration
 

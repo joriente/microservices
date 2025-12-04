@@ -122,11 +122,6 @@ public static class Extensions
 
     public static IHostApplicationBuilder AddSerilogLogging(this IHostApplicationBuilder builder)
     {
-        // Get Seq URL from configuration (provided by Aspire when using .WithReference(seq))
-        var seqUrl = builder.Configuration["ConnectionStrings:seq"] 
-                     ?? builder.Configuration["services:seq:http:0"] 
-                     ?? "http://localhost:5341";
-
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -137,7 +132,6 @@ public static class Extensions
             .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
             .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
             .WriteTo.Console()
-            .WriteTo.Seq(seqUrl)
             .CreateLogger();
 
         builder.Services.AddSerilog(Log.Logger);

@@ -17,7 +17,7 @@ Join us for a live demonstration of a production-ready microservices architectur
 - **Database per service** pattern (PostgreSQL, MongoDB, SQL Server)
 - **API Gateway** with Yarp reverse proxy
 - **Service orchestration** with .NET Aspire
-- **Centralized observability** with Seq logging
+- **Centralized observability** with Aspire Dashboard
 
 ### Live Demonstrations
 
@@ -32,7 +32,7 @@ Join us for a live demonstration of a production-ready microservices architectur
 - Demonstrate async, decoupled service communication
 
 **3. Observability & Monitoring (5-7 min)**
-- Centralized logging with Seq
+- Centralized logging with Aspire Dashboard
 - Cross-service request tracing
 - Failure handling and error scenarios
 
@@ -51,10 +51,9 @@ Join us for a live demonstration of a production-ready microservices architectur
 
 ## Technology Stack
 - .NET 9 with C#
-- .NET Aspire for orchestration
+- .NET Aspire for orchestration and observability
 - RabbitMQ (MassTransit)
 - PostgreSQL, MongoDB, SQL Server
-- Seq for centralized logging
 - Blazor WebAssembly frontend
 - Stripe payment integration
 - Docker containerization

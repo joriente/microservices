@@ -43,7 +43,6 @@ flowchart TB
         MDB[(MongoDB)]
         PG[(PostgreSQL)]
         RMQ[RabbitMQ<br/>Message Broker]
-        SEQ[Seq<br/>Logging]
     end
     
     subgraph "External Services"
@@ -63,8 +62,6 @@ flowchart TB
     
     PAY --> STRIPE
     NOT --> SENDGRID
-    
-    ID & PROD & CART & ORD & PAY & CUST & INV & NOT --> SEQ
     
     style UI fill:#e1f5ff
     style GW fill:#fff3e0
@@ -115,8 +112,7 @@ flowchart LR
     end
     
     subgraph "Observability"
-        OBS1[Seq]
-        OBS2[.NET Aspire]
+        OBS2[.NET Aspire Dashboard]
         OBS3[Spring Actuator]
     end
     
@@ -126,8 +122,8 @@ flowchart LR
     BE3 & JA3 --> MSG
     BE4 --> DB2
     BE2 & JA4 --> DB1
-    BE2 --> OBS1 & OBS2
-    JA2 --> OBS1 & OBS3
+    BE2 --> OBS2
+    JA2 --> OBS3
 ```
 
 ---
@@ -507,7 +503,6 @@ flowchart TB
             RMQ[ProductOrdering-rabbitmq<br/>Ports: 5672, 15672]
             MONGO[ProductOrdering-mongodb<br/>Port: 27017]
             PG[ProductOrdering-postgres<br/>Port: 5432]
-            SEQ[ProductOrdering-seq<br/>Port: 5341]
         end
         
         subgraph "Management UIs"
@@ -528,7 +523,7 @@ flowchart TB
         JAVA[NotificationService<br/>Java/Spring Boot<br/>Port 8085]
     end
     
-    RMQ & MONGO & PG & SEQ -.-> SVCS & JAVA
+    RMQ & MONGO & PG -.-> SVCS & JAVA
     SVCS --> ASP
     GW2 --> SVCS
     FE --> GW2
@@ -540,7 +535,6 @@ flowchart TB
     style RMQ fill:#ffebee
     style MONGO fill:#e0f2f1
     style PG fill:#e0f2f1
-    style SEQ fill:#fff3e0
     style JAVA fill:#fff9c4
     style ASP fill:#e1f5ff
 ```
@@ -564,7 +558,6 @@ flowchart LR
     
     subgraph "Infrastructure Ports"
         P15888[15888 - Aspire Dashboard]
-        P5341[5341 - Seq Logs]
         P15672[15672 - RabbitMQ UI]
         P27017[27017 - MongoDB]
         P5432[5432 - PostgreSQL]
@@ -652,21 +645,19 @@ flowchart TB
     end
     
     subgraph "Logging Infrastructure"
-        SEQ[Seq<br/>Centralized Logging<br/>Port 5341]
+        ASP[Aspire Dashboard<br/>Centralized Logging & Telemetry<br/>Port 15888]
     end
     
     subgraph "Monitoring"
-        ASP[Aspire Dashboard<br/>Service Health<br/>Port 15888]
         ACT[Spring Actuator<br/>Java Metrics<br/>Port 8085/actuator]
     end
     
-    S1 & S2 & S3 & S4 & S5 & S6 & S7 & S9 -->|Serilog| SEQ
-    S8 -->|SLF4J/Logback| SEQ
+    S1 & S2 & S3 & S4 & S5 & S6 & S7 & S9 -->|Serilog| ASP
+    S8 -->|SLF4J/Logback| ACT
     
     S1 & S2 & S3 & S4 & S5 & S6 & S7 & S9 -->|Telemetry| ASP
     S8 -->|Metrics| ACT
     
-    style SEQ fill:#fff3e0
     style ASP fill:#e1f5ff
     style S8 fill:#fff9c4
 ```
@@ -681,23 +672,23 @@ sequenceDiagram
     participant RabbitMQ
     participant InventoryService
     participant PaymentService
-    participant Seq
+    participant Aspire as Aspire Dashboard
     
-    Note over Frontend,Seq: CorrelationId: abc-123-xyz
+    Note over Frontend,Aspire: CorrelationId: abc-123-xyz
     
     Frontend->>Gateway: Create Order [CorrelationId: abc-123-xyz]
-    Gateway->>Seq: Log: Request Received
+    Gateway->>Aspire: Log: Request Received
     Gateway->>OrderService: Forward Request [CorrelationId: abc-123-xyz]
-    OrderService->>Seq: Log: Order Created
+    OrderService->>Aspire: Log: Order Created
     OrderService->>RabbitMQ: Publish Event [CorrelationId: abc-123-xyz]
     
     RabbitMQ->>InventoryService: OrderCreatedEvent [CorrelationId: abc-123-xyz]
-    InventoryService->>Seq: Log: Stock Reserved
+    InventoryService->>Aspire: Log: Stock Reserved
     
     RabbitMQ->>PaymentService: OrderCreatedEvent [CorrelationId: abc-123-xyz]
-    PaymentService->>Seq: Log: Payment Initiated
+    PaymentService->>Aspire: Log: Payment Initiated
     
-    Note over Seq: All logs linked by CorrelationId<br/>Easy to trace complete flow
+    Note over Aspire: All logs linked by CorrelationId<br/>Easy to trace complete flow in Dashboard
 ```
 
 ---

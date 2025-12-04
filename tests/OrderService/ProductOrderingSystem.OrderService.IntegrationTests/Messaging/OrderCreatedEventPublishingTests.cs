@@ -52,6 +52,7 @@ public class OrderCreatedEventPublishingTests
         Assert.NotNull(publishedMessage);
         Assert.Equal(orderId, publishedMessage.Context.Message.OrderId);
         Assert.Equal(customerId, publishedMessage.Context.Message.CustomerId);
+        Assert.NotNull(publishedMessage.Context.Message.Items);
         Assert.Single(publishedMessage.Context.Message.Items);
     }
 
@@ -113,6 +114,7 @@ public class OrderCreatedEventPublishingTests
         var publishedEvent = harness.Published.Select<OrderCreatedEvent>().First();
         
         Assert.Equal(expectedTotalAmount, publishedEvent.Context.Message.TotalAmount);
+        Assert.NotNull(publishedEvent.Context.Message.Items);
         Assert.Equal(2, publishedEvent.Context.Message.Items.Count);
     }
 }

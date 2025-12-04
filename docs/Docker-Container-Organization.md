@@ -12,12 +12,10 @@ All containers now use the `ProductOrdering-` prefix:
 - `ProductOrdering-mongodb` - MongoDB database
 - `ProductOrdering-postgres` - PostgreSQL database with pgAdmin
 - `ProductOrdering-rabbitmq` - RabbitMQ message broker
-- `ProductOrdering-seq` - Seq centralized logging
 
 ### Docker Compose Containers (Legacy)
 - `ProductOrdering-mongodb-legacy` - MongoDB from docker-compose
 - `ProductOrdering-rabbitmq-legacy` - RabbitMQ from docker-compose
-- `ProductOrdering-seq-legacy` - Seq from docker-compose
 
 ## Docker Desktop Organization
 
@@ -87,7 +85,6 @@ After running `.\Start-all.ps1`:
 
 **Management UIs:**
 - 📊 Aspire Dashboard: http://localhost:15888
-- 📋 Seq Logs: http://localhost:5341
 - 🐰 RabbitMQ: http://localhost:15672 (guest/guest)
 - 🍃 Mongo Express: http://localhost:8081 (admin/admin123)
 - 🐘 pgAdmin: Via Aspire dashboard → postgres resource

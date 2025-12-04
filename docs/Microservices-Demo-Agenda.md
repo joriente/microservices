@@ -24,7 +24,7 @@
 ```
 
 ### Aspire Dashboard Walkthrough
-- **Show running containers**: PostgreSQL, MongoDB, SQL Server, RabbitMQ, Seq
+- **Show running containers**: PostgreSQL, MongoDB, RabbitMQ
 - **Management UIs**: Demonstrate pgAdmin, Mongo Express, RabbitMQ Management
 - **Service Health**: Show all 6 microservices + gateway + frontend running
 - **Explain Aspire's Role**: Service discovery, configuration, observability, container orchestration
@@ -108,8 +108,8 @@
 
 ## Part 5: Observability & Monitoring (5-7 minutes)
 
-### Seq Centralized Logging
-- Open Seq dashboard from Aspire
+### Aspire Dashboard - Centralized Logging
+- Open structured logs in Aspire Dashboard
 - **Filter by service**: Show logs from specific microservices
 - **Search for events**: Search "PaymentProcessedEvent" to see event processing
 - **Trace an order**: Search by OrderId to see full journey across services:
@@ -125,7 +125,7 @@
 - **Insufficient Inventory Scenario**:
   1. Check current stock in inventory management (e.g., 2 units left)
   2. Try to order 10 units
-  3. Show in Seq: `InventoryReservationFailedEvent` published
+  3. Show in Aspire logs: `InventoryReservationFailedEvent` published
   4. Order creation fails gracefully with clear error message
 
 ## Part 6: Database Per Service Pattern (3-5 minutes)
@@ -176,7 +176,7 @@
 ### Recent Improvements
 - "We just migrated InventoryService from MongoDB to PostgreSQL"
 - "All event naming standardized with 'Event' suffix"
-- "Integrated Seq for centralized logging with Serilog"
+- "Centralized logging and telemetry through Aspire Dashboard"
 
 ---
 
@@ -189,16 +189,16 @@
 5. **Event Sourcing**: Audit trail of all business events
 6. **Scalability**: Scale services independently based on load
 7. **Team Autonomy**: Different teams can own different services
-8. **Modern Tooling**: .NET 9, Aspire, RabbitMQ, Seq, Docker
+8. **Modern Tooling**: .NET 9, Aspire Dashboard, RabbitMQ, Docker
 
 ## Demo Tips
 
 - **Prepare beforehand**: Run `.\Start-all.ps1` before the demo, verify all services healthy
 - **Have data ready**: Create a few products with varying stock levels
-- **Use split screen**: Show code + running app + RabbitMQ/Seq simultaneously
+- **Use split screen**: Show code + running app + RabbitMQ/Aspire Dashboard simultaneously
 - **Tell a story**: Follow a single order through the entire system
 - **Show failures**: Demonstrate error handling (insufficient stock, payment failure with bad card)
 - **Keep RabbitMQ Management open**: Visual representation of events flowing
-- **Use Seq filters**: Quickly trace specific order or event types
+- **Use Aspire log filters**: Quickly trace specific order or event types
 
 This agenda gives you flexibility to go deeper or shallower based on audience technical level and time constraints.
