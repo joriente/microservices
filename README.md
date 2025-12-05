@@ -54,7 +54,7 @@ Enter your **Stripe test API keys** when prompted ([Get keys here](https://dashb
 
 This automated script handles everything:
 - ✅ Starts Aspire AppHost (orchestrates all containers)
-- ✅ Spins up infrastructure: RabbitMQ, MongoDB, PostgreSQL, Seq
+- ✅ Spins up infrastructure: RabbitMQ, MongoDB, PostgreSQL
 - ✅ Waits for containers to be healthy
 - ✅ Detects RabbitMQ dynamic port (automatically configured)
 - ✅ Starts all .NET microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity)
@@ -72,8 +72,7 @@ This automated script handles everything:
 
 **User Interfaces:**
 - 🌐 **Web App**: http://localhost:5261 (main application)
-- 📊 **Aspire Dashboard**: http://localhost:15888 (service monitoring - check console for actual URL)
-- 📋 **Seq Logs**: http://localhost:5341 (centralized logs)
+- 📊 **Aspire Dashboard**: http://localhost:15888 (service monitoring, logs, telemetry - check console for actual URL)
 
 **Management Tools:**
 - 🐰 **RabbitMQ**: http://localhost:15672 (guest/guest)
@@ -116,7 +115,7 @@ See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) fo
 
 **View Event Flow:**
 - Open RabbitMQ Management → See events published/consumed
-- Open Seq → Search by OrderId to trace full order journey
+- Open Aspire Dashboard → Search logs by OrderId to trace full order journey
 
 ## 🏗️ Architecture Overview
 
@@ -137,8 +136,7 @@ See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) fo
 - **API Gateway** (Yarp) - Single entry point, routing, authentication
 - **Blazor WebAssembly** - Modern SPA frontend with MudBlazor UI
 - **RabbitMQ + MassTransit** - Event-driven messaging (cross-platform: .NET ↔ Java)
-- **.NET Aspire** - Local orchestration, service discovery
-- **Seq** - Centralized logging with Serilog
+- **.NET Aspire** - Local orchestration, service discovery, observability
 
 ## 📁 Project Structure
 
@@ -199,7 +197,7 @@ Each service owns its data - no shared databases:
 - **MongoDB**: All other services (ProductService, OrderService, CartService, CustomerService, PaymentService, IdentityService)
 
 ### Observability
-- **Seq Centralized Logging** - Trace events across all services by OrderId
+- **Aspire Dashboard** - Centralized logging, telemetry, trace events across all services by OrderId
 - **Aspire Dashboard** - Service health, resource utilization
 - **RabbitMQ Management** - Message flow visualization
 - **Serilog** - Structured logging with enrichers
@@ -220,7 +218,7 @@ Each service owns its data - no shared databases:
 | **Frontend** | Blazor WebAssembly, MudBlazor 7.x |
 | **Orchestration** | .NET Aspire 9.5.1 |
 | **API Gateway** | Yarp 2.2.0 |
-| **Logging** | Seq, Serilog 9.0 (.NET), SLF4J/Logback (Java) |
+| **Logging** | Aspire Dashboard, Serilog 9.0 (.NET), SLF4J/Logback (Java) |
 | **Payments** | Stripe API |
 | **Email** | SendGrid API |
 | **ORM** | Entity Framework Core 9.0, MongoDB Driver (.NET), Spring Data MongoDB (Java) |
@@ -291,7 +289,7 @@ By exploring this project, you'll learn:
 - ✅ Database-per-service with PostgreSQL and MongoDB
 - ✅ API Gateway patterns with Yarp
 - ✅ Blazor WebAssembly frontend development
-- ✅ Observability with Seq and Aspire
+- ✅ Observability with Aspire Dashboard
 - ✅ Payment integration with Stripe
 - ✅ Email notifications with SendGrid
 - ✅ Clean Architecture and CQRS
@@ -306,10 +304,10 @@ dotnet user-secrets list
 ```
 
 ### View Service Logs
-Open Seq at http://localhost:5341 and search by:
-- Service name: `@Application = "PaymentService"`
-- Order ID: `OrderId = "your-order-guid"`
-- Event type: `PaymentProcessedEvent`
+Open Aspire Dashboard at http://localhost:15888 and:
+- Filter by service name in the Structured Logs view
+- Search by Order ID: `OrderId = "your-order-guid"`
+- Filter by event type or log level
 
 ### Check Message Queues
 1. Open RabbitMQ Management: http://localhost:15672
@@ -474,7 +472,7 @@ If still failing, ensure:
 - Exchange/queue binding misconfigured
 - Event contract version mismatch
 
-**Solution**: Check Seq logs for the specific service to see consumer errors.
+**Solution**: Check Aspire Dashboard logs for the specific service to see consumer errors.
 
 ### Helpful Commands
 
@@ -519,7 +517,7 @@ docker restart $(docker ps -q)
 
 - ✅ **PostgreSQL Migration** - InventoryService migrated from MongoDB to PostgreSQL
 - ✅ **Event Standardization** - All events follow "Event" suffix naming
-- ✅ **Seq Integration** - Centralized logging with Serilog
+- ✅ **Aspire Observability** - Centralized logging and telemetry with Aspire Dashboard
 - ✅ **User Secrets** - API keys moved out of source control
 - ✅ **Blazor UI** - Full frontend with customer and admin features
 - ✅ **Payment Integration** - Stripe test mode with order flow
