@@ -26,7 +26,7 @@
     <ProjectReference Include="..\..\Services\PaymentService\ProductOrderingSystem.PaymentService.WebAPI\ProductOrderingSystem.PaymentService.WebAPI.csproj" />
     <ProjectReference Include="..\..\Services\CustomerService\ProductOrderingSystem.CustomerService.WebAPI\ProductOrderingSystem.CustomerService.WebAPI.csproj" />
     <ProjectReference Include="..\..\Services\InventoryService\ProductOrderingSystem.InventoryService.csproj" />
-    <ProjectReference Include="..\..\..\frontend\ProductOrderingSystem.Web.csproj" />
+    <ProjectReference Include="..\..\frontend\ProductOrderingSystem.Web.csproj" />
     <ProjectReference Include="..\..\Tools\ProductOrderingSystem.DataSeeder\ProductOrderingSystem.DataSeeder.csproj" />
   </ItemGroup>
 

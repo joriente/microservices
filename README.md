@@ -156,13 +156,13 @@ microservices/
 │   │   └── ApiGateway/              # Yarp reverse proxy, JWT validation
 │   ├── Shared/
 │   │   └── Contracts/               # Shared event contracts (ProductCreatedEvent, etc.)
-│   └── Aspire/
-│       ├── AppHost/                 # Orchestration, container management
-│       └── ServiceDefaults/         # Shared config (Serilog, OpenTelemetry)
-├── frontend/                        # Blazor WebAssembly SPA
-│   ├── Pages/                       # Customer & Admin pages
-│   ├── Services/                    # API clients for each microservice
-│   └── Components/                  # Reusable UI components
+│   ├── Aspire/
+│   │   ├── AppHost/                 # Orchestration, container management
+│   │   └── ServiceDefaults/         # Shared config (Serilog, OpenTelemetry)
+│   └── frontend/                    # Blazor WebAssembly SPA
+│       ├── Pages/                   # Customer & Admin pages
+│       ├── Services/                # API clients for each microservice
+│       └── Components/              # Reusable UI components
 ├── tests/                           # Unit & Integration tests per service
 ├── docs/                            # Architecture documentation
 ├── deployment/                      # Docker configs

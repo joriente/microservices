@@ -251,7 +251,7 @@ switch ($choice) {
         Write-Host "dotnet run" -ForegroundColor White
         Write-Host ""
         Write-Host "# Terminal 9 - Frontend (Port 5261)" -ForegroundColor Green
-        Write-Host "cd frontend" -ForegroundColor White
+        Write-Host "cd src\frontend" -ForegroundColor White
         Write-Host "dotnet run" -ForegroundColor White
         Write-Host ""
         Write-Host "Note: Make sure infrastructure (MongoDB, RabbitMQ, Seq, PostgreSQL) is running via docker-compose" -ForegroundColor Yellow

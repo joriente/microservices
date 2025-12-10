@@ -82,7 +82,7 @@
                 <MudTd DataLabel="Image">
                     @if (!string.IsNullOrEmpty(context.ImageUrl))
                     {
-                        <MudAvatar Image="@context.ImageUrl" Size="Size.Medium" />
+                        <MudAvatar src="@context.ImageUrl" Size="Size.Medium" />
                     }
                     else
                     {
@@ -213,7 +213,7 @@
         var dialog = await DialogService.ShowAsync<ProductDialog>("Create Product", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadProducts();
         }
@@ -238,7 +238,7 @@
         var dialog = await DialogService.ShowAsync<ProductDialog>("Edit Product", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (result is not null && !result.Canceled)
         {
             await LoadProducts();
         }
