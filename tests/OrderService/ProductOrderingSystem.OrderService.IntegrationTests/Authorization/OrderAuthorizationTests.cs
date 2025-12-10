@@ -300,7 +300,7 @@ public class OrderAuthorizationTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         
         // REST principles: Response should be an array with Pagination header
-        response.Headers.Should().ContainKey("Pagination");
+        response.Headers.Should().ContainKey("X-Pagination");
         
         // The token should be successfully validated and user context available
         var content = await response.Content.ReadFromJsonAsync<List<OrderDto>>();
