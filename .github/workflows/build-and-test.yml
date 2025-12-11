@@ -186,3 +186,31 @@ jobs:
         path: 'TestResults/IntegrationTests/**/*.trx'
         reporter: dotnet-trx
         fail-on-error: false
+
+    - name: Create Test Summary
+      if: github.event_name == 'pull_request' && (success() || failure())
+      run: |
+        echo "## Test Results Summary" > test-summary.md
+        echo "" >> test-summary.md
+        
+        # Count unit test results
+        UNIT_TOTAL=$(find TestResults/UnitTests -name "*.trx" | wc -l)
+        echo "### Unit Tests" >> test-summary.md
+        echo "- Test runs: $UNIT_TOTAL" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Count integration test results
+        INT_TOTAL=$(find TestResults/IntegrationTests -name "*.trx" | wc -l)
+        echo "### Integration Tests" >> test-summary.md
+        echo "- Test runs: $INT_TOTAL" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        echo "See the **Checks** tab above for detailed test results." >> test-summary.md
+
+    - name: Add Test Summary PR Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      if: github.event_name == 'pull_request' && hashFiles('test-summary.md') != ''
+      with:
+        recreate: false
+        path: test-summary.md
+        header: test-results
