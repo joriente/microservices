@@ -66,7 +66,7 @@ jobs:
         name: build-output
 
     - name: Run Unit Tests with Coverage
-      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/UnitTests -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=180000
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./TestResults/UnitTests -- RunConfiguration.TestSessionTimeout=180000
       timeout-minutes: 5
 
     - name: List generated unit test files
@@ -74,6 +74,8 @@ jobs:
       run: |
         echo "Unit test results:"
         ls -R TestResults/UnitTests/ || echo "No files found"
+        echo "Searching for any coverage files:"
+        find TestResults/UnitTests -type f || echo "No files at all"
 
     - name: Upload unit test results
       uses: actions/upload-artifact@v4
@@ -101,7 +103,7 @@ jobs:
         name: build-output
 
     - name: Run Integration Tests with Coverage
-      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/IntegrationTests -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=300000
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./TestResults/IntegrationTests -- RunConfiguration.TestSessionTimeout=300000
       timeout-minutes: 10
 
     - name: List generated integration test files
@@ -109,6 +111,8 @@ jobs:
       run: |
         echo "Integration test results:"
         ls -R TestResults/IntegrationTests/ || echo "No files found"
+        echo "Searching for any coverage files:"
+        find TestResults/IntegrationTests -type f || echo "No files at all"
 
     - name: Upload integration test results
       uses: actions/upload-artifact@v4
