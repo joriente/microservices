@@ -69,6 +69,12 @@ jobs:
       run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/UnitTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=180000
       timeout-minutes: 5
 
+    - name: List generated unit test files
+      if: success() || failure()
+      run: |
+        echo "Unit test results:"
+        ls -R TestResults/UnitTests/ || echo "No files found"
+
     - name: Upload unit test results
       uses: actions/upload-artifact@v4
       if: success() || failure()
@@ -97,6 +103,12 @@ jobs:
     - name: Run Integration Tests with Coverage
       run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/IntegrationTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=300000
       timeout-minutes: 10
+
+    - name: List generated integration test files
+      if: success() || failure()
+      run: |
+        echo "Integration test results:"
+        ls -R TestResults/IntegrationTests/ || echo "No files found"
 
     - name: Upload integration test results
       uses: actions/upload-artifact@v4
@@ -145,7 +157,7 @@ jobs:
 
     - name: Add Coverage PR Comment
       uses: marocchino/sticky-pull-request-comment@v2
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && hashFiles('code-coverage-results.md') != ''
       with:
         recreate: true
         path: code-coverage-results.md
