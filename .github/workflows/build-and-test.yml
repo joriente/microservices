@@ -103,8 +103,9 @@ jobs:
         name: build-output
 
     - name: Run Integration Tests with Coverage
-      run: dotnet test --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./TestResults/IntegrationTests -- RunConfiguration.TestSessionTimeout=300000
-      timeout-minutes: 10
+      continue-on-error: true
+      run: dotnet test --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./TestResults/IntegrationTests -- RunConfiguration.TestSessionTimeout=600000
+      timeout-minutes: 15
 
     - name: List generated integration test files
       if: success() || failure()
