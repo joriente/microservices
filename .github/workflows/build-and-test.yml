@@ -66,7 +66,7 @@ jobs:
         name: build-output
 
     - name: Run Unit Tests with Coverage
-      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/UnitTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=180000
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/UnitTests -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=180000
       timeout-minutes: 5
 
     - name: List generated unit test files
@@ -101,7 +101,7 @@ jobs:
         name: build-output
 
     - name: Run Integration Tests with Coverage
-      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/IntegrationTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=300000
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/IntegrationTests -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=300000
       timeout-minutes: 10
 
     - name: List generated integration test files
@@ -124,6 +124,9 @@ jobs:
     if: always()
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
     - name: Download unit test results
       uses: actions/download-artifact@v4
       with:
