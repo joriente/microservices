@@ -191,22 +191,71 @@ jobs:
     - name: Create Test Summary
       if: github.event_name == 'pull_request' && (success() || failure())
       run: |
-        echo "## Test Results Summary" > test-summary.md
+        echo "## 🧪 Test Results Summary" > test-summary.md
         echo "" >> test-summary.md
         
-        # Count unit test results
-        UNIT_TOTAL=$(find TestResults/UnitTests -name "*.trx" | wc -l)
-        echo "### Unit Tests" >> test-summary.md
-        echo "- Test runs: $UNIT_TOTAL" >> test-summary.md
+        # Parse unit test results
+        UNIT_PASSED=0
+        UNIT_FAILED=0
+        UNIT_SKIPPED=0
+        for file in TestResults/UnitTests/*.trx; do
+          if [ -f "$file" ]; then
+            PASSED=$(grep -oP 'passed="\K[0-9]+' "$file" | head -1)
+            FAILED=$(grep -oP 'failed="\K[0-9]+' "$file" | head -1)
+            SKIPPED=$(grep -oP 'inconclusive="\K[0-9]+' "$file" | head -1)
+            UNIT_PASSED=$((UNIT_PASSED + ${PASSED:-0}))
+            UNIT_FAILED=$((UNIT_FAILED + ${FAILED:-0}))
+            UNIT_SKIPPED=$((UNIT_SKIPPED + ${SKIPPED:-0}))
+          fi
+        done
+        UNIT_TOTAL=$((UNIT_PASSED + UNIT_FAILED + UNIT_SKIPPED))
+        
+        echo "### ✅ Unit Tests" >> test-summary.md
+        echo "| Status | Count |" >> test-summary.md
+        echo "|--------|-------|" >> test-summary.md
+        echo "| ✅ Passed | $UNIT_PASSED |" >> test-summary.md
+        echo "| ❌ Failed | $UNIT_FAILED |" >> test-summary.md
+        echo "| ⏭️ Skipped | $UNIT_SKIPPED |" >> test-summary.md
+        echo "| **Total** | **$UNIT_TOTAL** |" >> test-summary.md
         echo "" >> test-summary.md
         
-        # Count integration test results
-        INT_TOTAL=$(find TestResults/IntegrationTests -name "*.trx" | wc -l)
-        echo "### Integration Tests" >> test-summary.md
-        echo "- Test runs: $INT_TOTAL" >> test-summary.md
+        # Parse integration test results
+        INT_PASSED=0
+        INT_FAILED=0
+        INT_SKIPPED=0
+        for file in TestResults/IntegrationTests/*.trx; do
+          if [ -f "$file" ]; then
+            PASSED=$(grep -oP 'passed="\K[0-9]+' "$file" | head -1)
+            FAILED=$(grep -oP 'failed="\K[0-9]+' "$file" | head -1)
+            SKIPPED=$(grep -oP 'inconclusive="\K[0-9]+' "$file" | head -1)
+            INT_PASSED=$((INT_PASSED + ${PASSED:-0}))
+            INT_FAILED=$((INT_FAILED + ${FAILED:-0}))
+            INT_SKIPPED=$((INT_SKIPPED + ${SKIPPED:-0}))
+          fi
+        done
+        INT_TOTAL=$((INT_PASSED + INT_FAILED + INT_SKIPPED))
+        
+        echo "### 🔗 Integration Tests" >> test-summary.md
+        echo "| Status | Count |" >> test-summary.md
+        echo "|--------|-------|" >> test-summary.md
+        echo "| ✅ Passed | $INT_PASSED |" >> test-summary.md
+        echo "| ❌ Failed | $INT_FAILED |" >> test-summary.md
+        echo "| ⏭️ Skipped | $INT_SKIPPED |" >> test-summary.md
+        echo "| **Total** | **$INT_TOTAL** |" >> test-summary.md
         echo "" >> test-summary.md
         
-        echo "See the **Checks** tab above for detailed test results." >> test-summary.md
+        # Overall summary
+        TOTAL_PASSED=$((UNIT_PASSED + INT_PASSED))
+        TOTAL_FAILED=$((UNIT_FAILED + INT_FAILED))
+        TOTAL_SKIPPED=$((UNIT_SKIPPED + INT_SKIPPED))
+        TOTAL_ALL=$((TOTAL_PASSED + TOTAL_FAILED + TOTAL_SKIPPED))
+        
+        echo "### 📊 Overall" >> test-summary.md
+        echo "- **Total Tests**: $TOTAL_ALL" >> test-summary.md
+        echo "- **Pass Rate**: $(awk "BEGIN {printf \"%.1f\", ($TOTAL_PASSED/$TOTAL_ALL)*100}")%" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "---" >> test-summary.md
+        echo "💡 See the **Checks** tab above for detailed test results and logs." >> test-summary.md
 
     - name: Add Test Summary PR Comment
       uses: marocchino/sticky-pull-request-comment@v2
