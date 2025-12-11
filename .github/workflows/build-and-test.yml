@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: "Build and Test" 
+    name: "Build" 
     runs-on: ubuntu-latest
 
     steps:
@@ -38,8 +38,91 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Test with Coverage
-      run: dotnet test --no-build --no-restore --configuration Release --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults -- RunConfiguration.MaxCpuCount=0
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-output
+        path: |
+          **/bin/Release/
+          **/obj/Release/
+        retention-days: 1
+
+  unit-tests:
+    name: "Unit Tests"
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-output
+
+    - name: Run Unit Tests with Coverage
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/UnitTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=180000
+      timeout-minutes: 5
+
+    - name: Upload unit test results
+      uses: actions/upload-artifact@v4
+      if: success() || failure()
+      with:
+        name: unit-test-results
+        path: TestResults/UnitTests/**/*
+
+  integration-tests:
+    name: "Integration Tests"
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-output
+
+    - name: Run Integration Tests with Coverage
+      run: dotnet test --no-build --no-restore --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --results-directory ./TestResults/IntegrationTests -- RunConfiguration.MaxCpuCount=0 RunConfiguration.TestSessionTimeout=300000
+      timeout-minutes: 10
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      if: success() || failure()
+      with:
+        name: integration-test-results
+        path: TestResults/IntegrationTests/**/*
+
+  report:
+    name: "Test Report & Coverage"
+    needs: [unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Download unit test results
+      uses: actions/download-artifact@v4
+      with:
+        name: unit-test-results
+        path: TestResults/UnitTests
+
+    - name: Download integration test results
+      uses: actions/download-artifact@v4
+      with:
+        name: integration-test-results
+        path: TestResults/IntegrationTests
 
     - name: Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
@@ -61,25 +144,20 @@ jobs:
         recreate: true
         path: code-coverage-results.md
 
-    - name: Test Report
+    - name: Unit Test Report
       uses: dorny/test-reporter@v1
       if: success() || failure()
       with:
-        name: .NET Tests
-        path: 'TestResults/**/*.trx'
+        name: Unit Tests
+        path: 'TestResults/UnitTests/**/*.trx'
         reporter: dotnet-trx
         fail-on-error: false
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
+    - name: Integration Test Report
+      uses: dorny/test-reporter@v1
       if: success() || failure()
       with:
-        name: test-results
-        path: TestResults/**/*
-
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: success() || failure()
-      with:
-        name: coverage-reports
-        path: TestResults/**/coverage.cobertura.xml
+        name: Integration Tests
+        path: 'TestResults/IntegrationTests/**/*.trx'
+        reporter: dotnet-trx
+        fail-on-error: false
