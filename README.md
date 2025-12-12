@@ -2,6 +2,18 @@
 
 A production-ready e-commerce microservices application built with .NET 9, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.
 
+<div align="center">
+
+[![Build and Test](https://github.com/joriente/microservices/actions/workflows/build-and-test.yml/badge.svg?branch=main)](https://github.com/joriente/microservices/actions/workflows/build-and-test.yml)
+[![Code Scanning](https://github.com/joriente/microservices/actions/workflows/codeql.yml/badge.svg)](https://github.com/joriente/microservices/actions/workflows/codeql.yml)
+[![Package](https://github.com/joriente/microservices/actions/workflows/package.yml/badge.svg)](https://github.com/joriente/microservices/actions/workflows/package.yml)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/joriente/microservices/issues)
+[![ADRs](https://img.shields.io/badge/ADRs-log4brains-blue.svg)](https://joriente.github.io/microservices/)
+
+![Microservices Repo Analytics](https://repobeats.axiom.co/api/embed//b9e8e3f481adb264bc1b6e3544ee5bef28a4b419.svg "Microservices Repo analytics")
+
+</div>
+
 ## � Quick Start for New Developers
 
 ### 1️⃣ Prerequisites
