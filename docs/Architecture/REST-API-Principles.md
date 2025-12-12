@@ -1,3 +1,12 @@
+---
+tags:
+  - architecture
+  - rest-api
+  - api-design
+  - http
+  - standards
+  - best-practices
+---
 # REST API Principles Implementation
 
 ## Overview
@@ -317,3 +326,4 @@ However, for a new system or during initial development, it's best to adopt REST
 - [HATEOAS Principle](https://restfulapi.net/hateoas/)
 - [HTTP Headers for Pagination](https://www.rfc-editor.org/rfc/rfc8288)
 - [REST API Best Practices](https://stackoverflow.blog/2020/03/02/best-practices-for-rest-api-design/)
+

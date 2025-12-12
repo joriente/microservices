@@ -1,3 +1,14 @@
+---
+tags:
+  - service
+  - analytics
+  - mongodb
+  - implementation
+  - azure-event-hub
+  - scalar
+  - csharp
+---
+
 # Analytics Service Implementation with Microsoft Fabric and Azure Data Lake
 
 This document provides a comprehensive guide for implementing the Analytics Service for the Product Ordering System using Microsoft Fabric and Azure Data Lake Storage.

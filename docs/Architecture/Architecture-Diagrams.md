@@ -1,3 +1,14 @@
+---
+tags:
+  - architecture
+  - diagrams
+  - system-design
+  - microservices
+  - mermaid
+  - event-driven
+  - aspire
+---
+
 # Product Ordering System - Architecture Diagrams
 
 This document contains comprehensive architecture diagrams showing the system's structure, data flow, and event-driven communication patterns.

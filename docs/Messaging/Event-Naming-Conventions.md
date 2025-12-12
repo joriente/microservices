@@ -1,3 +1,12 @@
+---
+tags:
+  - messaging
+  - events
+  - conventions
+  - standards
+  - best-practices
+---
+
 # Event Naming Conventions
 
 This document describes the standardized event naming conventions used across all microservices.

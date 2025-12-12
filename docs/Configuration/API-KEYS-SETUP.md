@@ -1,3 +1,12 @@
+---
+tags:
+  - configuration
+  - api-keys
+  - secrets
+  - setup
+  - security
+  - user-secrets
+---
 # Developer Setup - API Keys
 
 ## Quick Start
@@ -58,3 +67,4 @@ The system automatically creates these users for testing:
   - Access: Regular customer account
 
 Use these to test the application without creating new accounts!
+

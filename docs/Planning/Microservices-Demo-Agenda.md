@@ -1,3 +1,10 @@
+---
+tags:
+  - planning
+  - demo
+  - presentation
+  - agenda
+---
 # 30-45 Minute Microservices Architecture Demo Agenda
 
 ## Part 1: Architecture Overview (5-7 minutes)
@@ -202,3 +209,4 @@
 - **Use Aspire log filters**: Quickly trace specific order or event types
 
 This agenda gives you flexibility to go deeper or shallower based on audience technical level and time constraints.
+

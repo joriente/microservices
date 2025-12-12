@@ -1,3 +1,13 @@
+---
+tags:
+  - service
+  - polyglot
+  - java
+  - csharp
+  - integration
+  - notification
+  - rabbitmq
+---
 # Polyglot Microservices Integration - Java NotificationService
 
 ## Overview
@@ -458,3 +468,4 @@ The Java NotificationService demonstrates:
 ✅ Resilient distributed systems  
 
 This architecture proves that microservices enable technology diversity while maintaining system cohesion through well-defined contracts and messaging patterns.
+

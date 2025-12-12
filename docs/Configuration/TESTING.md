@@ -1,3 +1,13 @@
+---
+tags:
+  - configuration
+  - testing
+  - unit-tests
+  - integration-tests
+  - nunit
+  - xunit
+  - coverage
+---
 # Testing Guide
 
 ## Overview
@@ -495,3 +505,4 @@ The test suite provides comprehensive coverage across:
 - ✅ Polyglot service integration (.NET ↔ Java)
 
 All tests run automatically in CI/CD pipelines, ensuring code quality and preventing regressions.
+

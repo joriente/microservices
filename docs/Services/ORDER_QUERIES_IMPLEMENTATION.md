@@ -1,3 +1,13 @@
+---
+tags:
+  - service
+  - order
+  - cqrs
+  - queries
+  - postgresql
+  - implementation
+  - csharp
+---
 # Order Queries Implementation Summary
 
 ## Overview
@@ -292,3 +302,4 @@ All order query functionality is now **fully implemented and tested**. The Order
 - ✅ Follows CQRS pattern
 
 The Order Service API is now production-ready for basic order management operations! 🎉
+

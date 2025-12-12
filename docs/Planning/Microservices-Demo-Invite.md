@@ -1,3 +1,10 @@
+---
+tags:
+  - planning
+  - demo
+  - presentation
+  - overview
+---
 # Microservices Architecture Demo - Meeting Invite
 
 **Duration:** 30-45 minutes  
@@ -72,3 +79,4 @@ Join us for a live demonstration of a production-ready microservices architectur
 ---
 
 **Note:** Demo includes live coding walkthrough and failure scenario demonstrations. Time will be reserved for Q&A.
+

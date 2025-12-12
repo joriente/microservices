@@ -1,3 +1,13 @@
+---
+tags:
+  - architecture
+  - docker
+  - containers
+  - orchestration
+  - deployment
+  - infrastructure
+---
+
 # Docker Container Organization
 
 ## Changes Made

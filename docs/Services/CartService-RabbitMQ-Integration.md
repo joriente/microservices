@@ -1,3 +1,13 @@
+---
+tags:
+  - service
+  - cart
+  - rabbitmq
+  - masstransit
+  - messaging
+  - integration
+  - csharp
+---
 # Cart Service RabbitMQ Integration
 
 ## Overview
@@ -353,3 +363,4 @@ Expected: Cart Service receives OrderCreatedEvent and clears the cart.
 ✅ **Eventual consistency** model for better scalability  
 
 The Cart Service is now fully integrated into the event-driven microservices architecture! 🚀
+

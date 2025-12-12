@@ -1,3 +1,12 @@
+---
+tags:
+  - messaging
+  - saga
+  - compensation
+  - distributed-transactions
+  - patterns
+  - masstransit
+---
 # Saga Compensation Pattern Implementation
 
 ## Overview
@@ -488,3 +497,4 @@ Prevent cascading failures:
 **Status**: ✅ **COMPLETE** - Ready for testing!
 
 The compensation/saga pattern is fully implemented and the solution builds successfully. The system can now handle product reservation failures gracefully by automatically cancelling orders and restoring stock.
+
