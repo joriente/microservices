@@ -249,6 +249,7 @@
   },
   "active": "9c72f2f457a5c991",
   "lastOpenFiles": [
+    "adr/20251212-analytics-with-microsoft-fabric.md",
     "Planning/Microservices-Demo-Agenda.md",
     "README.md",
     "adr/20251212-use-markdown-architectural-decision-records.md",
@@ -277,7 +278,6 @@
     "code snippets.md",
     "Blog",
     "Vlog",
-    "Business/Journal/2025-02-06.md",
     "Business/Journal/Technical/Migrated/assets/why-not-jwt.png",
     "Business/Journal/Technical/Migrated/assets/original.jpg",
     "Business/Journal/Technical/Migrated/assets/oYukX.jpg",
