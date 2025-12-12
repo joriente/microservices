@@ -1,0 +1,31 @@
+{
+  "name": "microservices",
+  "version": "1.0.0",
+  "description": "A production-ready e-commerce microservices application built with .NET 9, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "adr:new": "log4brains adr new",
+    "adr:preview": "log4brains preview",
+    "adr:build": "log4brains build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joriente/microservices.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/joriente/microservices/issues"
+  },
+  "homepage": "https://github.com/joriente/microservices#readme",
+  "devDependencies": {
+    "log4brains": "^1.1.0"
+  }
+}
