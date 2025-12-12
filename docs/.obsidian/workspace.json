@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "Planning/Microservices-Demo-Invite.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "Microservices-Demo-Invite"
             }
           }
         ],
@@ -249,6 +249,8 @@
   },
   "active": "9c72f2f457a5c991",
   "lastOpenFiles": [
+    "Planning/Microservices-Demo-Agenda.md",
+    "README.md",
     "adr/20251212-use-markdown-architectural-decision-records.md",
     "adr/20251212-use-log4brains-to-manage-the-adrs.md",
     "adr/README.md",
@@ -276,8 +278,6 @@
     "Blog",
     "Vlog",
     "Business/Journal/2025-02-06.md",
-    "Business/Journal/Technical/Technical/Self-Improvement/High-Vis.md",
-    "Business/Journal/Technical/Technical/Self-Improvement/Technical Home.md",
     "Business/Journal/Technical/Migrated/assets/why-not-jwt.png",
     "Business/Journal/Technical/Migrated/assets/original.jpg",
     "Business/Journal/Technical/Migrated/assets/oYukX.jpg",

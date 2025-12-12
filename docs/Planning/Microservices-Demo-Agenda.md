@@ -7,18 +7,66 @@ tags:
 ---
 # 30-45 Minute Microservices Architecture Demo Agenda
 
+## Part 0: Development Environment Setup (5-7 minutes)
+
+### VS Code Setup & Extensions
+Walk through the recommended development environment:
+
+**Essential Tools:**
+- Visual Studio Code (primary IDE)
+- .NET 9 SDK
+- Java 21 JDK (for NotificationService)
+- Apache Maven
+- Docker Desktop
+- Git
+
+**Key VS Code Extensions** (see [vscode-extension.list](../vscode-extension.list) for full list):
+
+*C# Development:*
+- C# Dev Kit (`ms-dotnettools.csdevkit`)
+- C# (`ms-dotnettools.csharp`)
+- IntelliCode for C# (`ms-dotnettools.vscodeintellicode-csharp`)
+- .NET Core Test Explorer (`formulahendry.dotnet-test-explorer`)
+- Blazor Snippet Pack (`adrianwilczynski.blazor-snippet-pack`)
+- MudBlazor Snippets (`mukul.mudblazor-snippets`)
+
+*Azure & Cloud:*
+- Azure Developer CLI (`ms-azuretools.azure-dev`)
+- Azure GitHub Copilot (`ms-azuretools.vscode-azure-github-copilot`)
+- Docker (`ms-azuretools.vscode-docker`)
+- Kubernetes Tools (`ms-kubernetes-tools.vscode-kubernetes-tools`)
+
+*Database Tools:*
+- SQL Server (mssql) (`ms-mssql.mssql`)
+- SQL Database Projects (`ms-mssql.sql-database-projects-vscode`)
+- Azure Cosmos DB (`ms-azuretools.vscode-cosmosdb`)
+
+*Productivity:*
+- GitHub Copilot & Chat (`github.copilot`, `github.copilot-chat`)
+- GitLens (`eamodio.gitlens`)
+- Better Comments (`aaron-bond.better-comments`)
+- Thunder Client (`rangav.vscode-thunder-client`) - API testing
+- TODO Tree (`gruntfuggly.todo-tree`)
+
+*Architecture & Documentation:*
+- OpenAPI (Swagger) Viewer (`42crunch.vscode-openapi`)
+- YAML (`redhat.vscode-yaml`)
+- Entity Framework Tools (`richardwillis.vscode-entity-framework`)
+
+**Demo Tip:** Show VS Code extensions panel and highlight that all extensions can be installed from the [vscode-extension.list](../vscode-extension.list) file for team consistency.
+
 ## Part 1: Architecture Overview (5-7 minutes)
 
 ### Visual Tour of Solution Structure
 - **Show the solution in VS Code** - Highlight the clean separation:
-  - `src/Services/` - 6 independent microservices (Product, Order, Cart, Customer, Inventory, Payment)
+  - `src/Services/` - 8 independent microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity, Analytics, Notification)
   - `src/Gateway/` - API Gateway (Yarp reverse proxy)
   - `frontend/` - Blazor WebAssembly UI
   - `src/Aspire/` - Orchestration layer
   - `src/Shared/` - Shared contracts (events only)
 
 ### Key Architecture Principles
-- **Microservices Independence**: Each service has its own database (OrderService→SQL Server, InventoryService→PostgreSQL, ProductService→SQL Server, CartService→MongoDB)
+- **Microservices Independence**: Each service has its own database (OrderService→MongoDB, InventoryService→PostgreSQL, ProductService→MongoDB, CartService→MongoDB, AnalyticsService→MongoDB)
 - **Domain-Driven Design**: Clean Architecture with Domain/Application/Infrastructure layers where applicable
 - **Event-Driven Communication**: RabbitMQ for async messaging between services
 - **API Gateway Pattern**: Single entry point for frontend, routes to backend services
@@ -33,7 +81,7 @@ tags:
 ### Aspire Dashboard Walkthrough
 - **Show running containers**: PostgreSQL, MongoDB, RabbitMQ
 - **Management UIs**: Demonstrate pgAdmin, Mongo Express, RabbitMQ Management
-- **Service Health**: Show all 6 microservices + gateway + frontend running
+- **Service Health**: Show all 8 microservices + gateway + frontend running
 - **Explain Aspire's Role**: Service discovery, configuration, observability, container orchestration
 
 ### Point Out Key Features
@@ -102,6 +150,15 @@ tags:
      - `PaymentProcessedEvent` → InventoryService commits reservation
    - Show in pgAdmin: Reserved quantity changes, then committed
 
+4. **Analytics Service Event Consumption**
+   - Open Mongo Express → Navigate to Analytics database
+   - Show how AnalyticsService consumes the same events:
+     - `OrderCreatedEvent` → Captures order metrics (revenue, product popularity)
+     - `ProductViewedEvent` → Tracks product view counts
+     - `CartAbandonedEvent` → Identifies conversion opportunities
+   - Explain: "Multiple services can consume the same event for different purposes"
+   - Point out: "AnalyticsService builds real-time dashboards without impacting transactional services"
+
 ### Code Walkthrough (Optional - use selected code)
 - **Show PaymentProcessedEventConsumer.cs**:
   ```csharp
@@ -142,13 +199,12 @@ tags:
    - Show `inventory_items` and `inventory_reservations` tables
    - Point out EF Core migrations folder
 
-2. **MongoDB (CartService)** - Mongo Express
-   - Show cart documents with embedded items
-   - Explain: "NoSQL for flexible cart schemas"
-
-3. **SQL Server (OrderService, ProductService)** - SQL Server Management Studio or Azure Data Studio
-   - Show relational order tables with foreign keys
-   - Explain: "Strong consistency for transactional data"
+2. **MongoDB (Multiple Services)** - Mongo Express
+   - **CartService** - Flexible cart documents with embedded items
+   - **AnalyticsService** - Aggregated metrics, time-series data for dashboards
+   - **ProductService** - Product catalog with flexible schemas
+   - **OrderService** - Order history and status tracking
+   - Explain: "NoSQL for flexible schemas and analytics workloads"
 
 ### Key Points
 - "Each service owns its data - no direct database sharing"
@@ -180,10 +236,34 @@ tags:
 - Product management with stock sync
 - Order management and status updates
 
+### Analytics Service Deep Dive
+- **Real-Time Metrics Dashboard**:
+  - Show product view tracking - which products are most viewed
+  - Display sales analytics - revenue by product, conversion rates
+  - Cart abandonment analysis - identify potential lost sales
+  
+- **Event-Driven Analytics Pattern**:
+  - Explain: "AnalyticsService subscribes to all business events"
+  - Show MongoDB collections: `order_metrics`, `product_views`, `cart_events`
+  - Demonstrate how analytics don't slow down transactional services
+  
+- **Future Enhancements**:
+  - Integration with Microsoft Fabric for advanced analytics
+  - Machine learning models for product recommendations
+  - Customer segmentation and behavior analysis
+
+### Polyglot Microservices
+- **NotificationService (Java + Spring Boot)**:
+  - Show how Java service integrates seamlessly via RabbitMQ
+  - Cross-platform event consumption (.NET ↔ Java)
+  - Email notifications using SendGrid API
+
 ### Recent Improvements
-- "We just migrated InventoryService from MongoDB to PostgreSQL"
+- "Added AnalyticsService for real-time business intelligence"
+- "Implemented Java NotificationService demonstrating polyglot architecture"
 - "All event naming standardized with 'Event' suffix"
 - "Centralized logging and telemetry through Aspire Dashboard"
+- "Set up log4brains for Architecture Decision Records (ADRs)"
 
 ---
 

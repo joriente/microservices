@@ -44,6 +44,7 @@ flowchart TB
         PAY[PaymentService<br/>Port 5005<br/>MongoDB]
         CUST[CustomerService<br/>Port 5006<br/>MongoDB]
         INV[InventoryService<br/>Port 5007<br/>PostgreSQL]
+        ANAL[AnalyticsService<br/>Port 5008<br/>MongoDB]
     end
     
     subgraph "Java Microservices"
@@ -56,20 +57,28 @@ flowchart TB
         RMQ[RabbitMQ<br/>Message Broker]
     end
     
+    subgraph "Azure Cloud Services"
+        FABRIC[Microsoft Fabric<br/>Advanced Analytics]
+        DATALAKE[Azure Data Lake<br/>Long-term Storage]
+    end
+    
     subgraph "External Services"
         STRIPE[Stripe API]
         SENDGRID[SendGrid API]
     end
     
     UI --> GW
-    GW --> ID & PROD & CART & ORD & PAY & CUST & INV
+    GW --> ID & PROD & CART & ORD & PAY & CUST & INV & ANAL
     
-    ID & PROD & CART & ORD & PAY & CUST -.-> MDB
+    ID & PROD & CART & ORD & PAY & CUST & ANAL -.-> MDB
     INV -.-> PG
     NOT -.-> MDB
     
-    ID & PROD & CART & ORD & PAY & CUST & INV --> RMQ
-    RMQ --> NOT
+    ID & PROD & CART & ORD & PAY & CUST & INV & ANAL --> RMQ
+    RMQ --> NOT & ANAL
+    
+    ANAL -.-> FABRIC
+    ANAL -.-> DATALAKE
     
     PAY --> STRIPE
     NOT --> SENDGRID
@@ -83,10 +92,13 @@ flowchart TB
     style PAY fill:#f3e5f5
     style CUST fill:#f3e5f5
     style INV fill:#e8f5e9
+    style ANAL fill:#e3f2fd
     style NOT fill:#fff9c4
     style RMQ fill:#ffebee
     style MDB fill:#e0f2f1
     style PG fill:#e0f2f1
+    style FABRIC fill:#fce4ec
+    style DATALAKE fill:#f3e5f5
 ```
 
 ### Technology Stack
@@ -329,6 +341,7 @@ flowchart LR
         ORD_CON[OrderService]
         INV_CON[InventoryService]
         NOT_CON[NotificationService<br/>Java]
+        ANAL_CON[AnalyticsService<br/>Metrics & BI]
     end
     
     PROD_PUB -->|Publish| PROD_EX
@@ -337,15 +350,19 @@ flowchart LR
     INV_PUB -->|Publish| INV_EX
     
     PROD_EX -->|Subscribe| CART_CON
+    PROD_EX -->|Subscribe| ANAL_CON
     ORD_EX -->|Subscribe| CART_CON
     ORD_EX -->|Subscribe| INV_CON
     ORD_EX -->|Subscribe| NOT_CON
+    ORD_EX -->|Subscribe| ANAL_CON
     
     PAY_EX -->|Subscribe| INV_CON
     PAY_EX -->|Subscribe| ORD_CON
     PAY_EX -->|Subscribe| NOT_CON
+    PAY_EX -->|Subscribe| ANAL_CON
     
     INV_EX -->|Subscribe| ORD_CON
+    INV_EX -->|Subscribe| ANAL_CON
     
     style PROD_PUB fill:#f3e5f5
     style ORD_PUB fill:#f3e5f5
@@ -496,9 +513,18 @@ flowchart LR
         N1[Notification<br/>- OrderId<br/>- Type<br/>- Status<br/>- Email]
     end
     
+    subgraph "AnalyticsService - MongoDB + Fabric + Data Lake"
+        A1[OrderMetrics<br/>- OrderId<br/>- Revenue<br/>- Timestamp]
+        A2[ProductViews<br/>- ProductId<br/>- ViewCount<br/>- Timestamp]
+        A3[CartEvents<br/>- CartId<br/>- EventType<br/>- Abandoned]
+    end
+    
     style IN1 fill:#e8f5e9
     style IN2 fill:#e8f5e9
     style N1 fill:#fff9c4
+    style A1 fill:#e3f2fd
+    style A2 fill:#e3f2fd
+    style A3 fill:#e3f2fd
 ```
 
 ---
@@ -704,6 +730,179 @@ sequenceDiagram
 
 ---
 
+## Analytics Architecture
+
+### Analytics Service Data Flow
+
+```mermaid
+flowchart TB
+    subgraph "Event Sources"
+        PROD[ProductService<br/>ProductViewedEvent]
+        ORD[OrderService<br/>OrderCreatedEvent]
+        CART[CartService<br/>CartAbandonedEvent]
+        PAY[PaymentService<br/>PaymentProcessedEvent]
+        INV[InventoryService<br/>InventoryCommittedEvent]
+    end
+    
+    subgraph "Messaging Layer"
+        RMQ[RabbitMQ<br/>Event Bus]
+    end
+    
+    subgraph "Analytics Service"
+        CONS[Event Consumers<br/>MassTransit]
+        PROC[Data Processors<br/>Aggregation & Enrichment]
+        REPO[Repository Layer]
+    end
+    
+    subgraph "Data Storage"
+        MONGO[(MongoDB<br/>Hot Data<br/>Real-time Metrics)]
+    end
+    
+    subgraph "Azure Cloud Analytics"
+        FABRIC[Microsoft Fabric<br/>- Data Warehouse<br/>- Lakehouses<br/>- Real-time Analytics<br/>- Power BI]
+        DATALAKE[(Azure Data Lake<br/>Storage Gen2<br/>- Historical Data<br/>- Long-term Archive)]
+    end
+    
+    subgraph "Visualization"
+        DASH[Real-time Dashboards<br/>- Sales Metrics<br/>- Product Performance<br/>- Customer Behavior]
+        POWERBI[Power BI Reports<br/>- Executive Dashboards<br/>- Trend Analysis]
+    end
+    
+    PROD & ORD & CART & PAY & INV -->|Publish| RMQ
+    RMQ -->|Subscribe| CONS
+    CONS --> PROC
+    PROC --> REPO
+    REPO --> MONGO
+    
+    REPO -.->|Batch Upload| DATALAKE
+    DATALAKE --> FABRIC
+    MONGO -.->|Stream| FABRIC
+    
+    MONGO --> DASH
+    FABRIC --> POWERBI
+    
+    style CONS fill:#e3f2fd
+    style PROC fill:#e3f2fd
+    style REPO fill:#e3f2fd
+    style MONGO fill:#e0f2f1
+    style FABRIC fill:#fce4ec
+    style DATALAKE fill:#f3e5f5
+    style DASH fill:#fff9c4
+    style POWERBI fill:#fff9c4
+```
+
+### Analytics Event Processing
+
+```mermaid
+sequenceDiagram
+    participant Order as OrderService
+    participant RMQ as RabbitMQ
+    participant Analytics as AnalyticsService
+    participant Mongo as MongoDB
+    participant Lake as Azure Data Lake
+    participant Fabric as Microsoft Fabric
+    
+    Order->>RMQ: Publish OrderCreatedEvent
+    RMQ->>Analytics: Consume Event
+    Analytics->>Analytics: Extract Metrics<br/>(Revenue, Product IDs)
+    Analytics->>Mongo: Store Real-time Metrics
+    
+    Note over Analytics,Lake: Batch Process (Hourly)
+    
+    Analytics->>Lake: Upload Aggregated Data
+    Lake->>Fabric: Trigger Data Pipeline
+    Fabric->>Fabric: Process & Transform
+    Fabric->>Fabric: Update Data Warehouse
+    
+    Note over Fabric: Power BI refreshes dashboards
+```
+
+### Analytics Data Models
+
+```mermaid
+flowchart LR
+    subgraph "MongoDB Collections (Hot Data)"
+        M1[order_metrics<br/>- OrderId<br/>- Revenue<br/>- ProductCount<br/>- Timestamp]
+        M2[product_views<br/>- ProductId<br/>- ViewCount<br/>- Timestamp<br/>- Source]
+        M3[cart_events<br/>- CartId<br/>- EventType<br/>- Abandoned<br/>- Timestamp<br/>- Items]
+        M4[customer_behavior<br/>- CustomerId<br/>- ActionType<br/>- Metadata]
+    end
+    
+    subgraph "Azure Data Lake (Cold Data)"
+        L1[Historical Orders<br/>Parquet Files]
+        L2[Product Analytics<br/>Parquet Files]
+        L3[Customer Journey<br/>Parquet Files]
+    end
+    
+    subgraph "Microsoft Fabric"
+        F1[Data Warehouse<br/>Dimensional Model]
+        F2[Lakehouse<br/>Delta Tables]
+        F3[Real-time Hub<br/>Event Streams]
+    end
+    
+    M1 & M2 & M3 & M4 -.->|Batch Export| L1 & L2 & L3
+    L1 & L2 & L3 --> F2
+    F2 --> F1
+    M1 & M2 & M3 & M4 -.->|Stream| F3
+    F3 --> F2
+    
+    style M1 fill:#e3f2fd
+    style M2 fill:#e3f2fd
+    style M3 fill:#e3f2fd
+    style M4 fill:#e3f2fd
+    style L1 fill:#f3e5f5
+    style L2 fill:#f3e5f5
+    style L3 fill:#f3e5f5
+    style F1 fill:#fce4ec
+    style F2 fill:#fce4ec
+    style F3 fill:#fce4ec
+```
+
+### Analytics Use Cases
+
+```mermaid
+flowchart TB
+    subgraph "Real-time Analytics"
+        RT1[Sales Dashboard<br/>Current day revenue]
+        RT2[Product Performance<br/>Top sellers today]
+        RT3[Cart Abandonment<br/>Live tracking]
+        RT4[Customer Activity<br/>Active users]
+    end
+    
+    subgraph "Batch Analytics"
+        BA1[Trend Analysis<br/>Monthly/Yearly trends]
+        BA2[Customer Segmentation<br/>RFM Analysis]
+        BA3[Inventory Forecasting<br/>Demand prediction]
+        BA4[Revenue Attribution<br/>Channel performance]
+    end
+    
+    subgraph "Advanced Analytics (Fabric)"
+        AA1[Machine Learning<br/>Product Recommendations]
+        AA2[Predictive Analytics<br/>Churn Prediction]
+        AA3[Anomaly Detection<br/>Fraud Detection]
+        AA4[Cohort Analysis<br/>User Retention]
+    end
+    
+    MONGO[(MongoDB<br/>Real-time Data)] --> RT1 & RT2 & RT3 & RT4
+    LAKE[(Azure Data Lake<br/>Historical Data)] --> BA1 & BA2 & BA3 & BA4
+    FABRIC[Microsoft Fabric<br/>Unified Analytics] --> AA1 & AA2 & AA3 & AA4
+    
+    style RT1 fill:#e3f2fd
+    style RT2 fill:#e3f2fd
+    style RT3 fill:#e3f2fd
+    style RT4 fill:#e3f2fd
+    style BA1 fill:#fff9c4
+    style BA2 fill:#fff9c4
+    style BA3 fill:#fff9c4
+    style BA4 fill:#fff9c4
+    style AA1 fill:#fce4ec
+    style AA2 fill:#fce4ec
+    style AA3 fill:#fce4ec
+    style AA4 fill:#fce4ec
+```
+
+---
+
 ## Summary
 
 These diagrams illustrate:
@@ -712,12 +911,14 @@ These diagrams illustrate:
 ✅ **Event-Driven Communication** - RabbitMQ-based async messaging  
 ✅ **Saga Pattern** - Distributed transaction handling with compensation  
 ✅ **Database-Per-Service** - Independent data stores (MongoDB + PostgreSQL)  
+✅ **Analytics Architecture** - Real-time + batch analytics with Microsoft Fabric and Azure Data Lake  
 ✅ **Security** - JWT-based authentication and authorization  
 ✅ **Observability** - Centralized logging and distributed tracing  
 ✅ **Polyglot Architecture** - .NET and Java services working together  
 
 For detailed implementation, see:
-- [POLYGLOT_INTEGRATION.md](POLYGLOT_INTEGRATION.md) - Java/.NET integration
-- [Event-Naming-Conventions.md](Event-Naming-Conventions.md) - Event contracts
-- [MESSAGING_IMPLEMENTATION.md](MESSAGING_IMPLEMENTATION.md) - RabbitMQ patterns
-- [SAGA_COMPENSATION_IMPLEMENTATION.md](SAGA_COMPENSATION_IMPLEMENTATION.md) - Saga implementation
+- [Analytics-Service-Implementation.md](../Services/Analytics-Service-Implementation.md) - Analytics service details
+- [POLYGLOT_INTEGRATION.md](../Messaging/POLYGLOT_INTEGRATION.md) - Java/.NET integration
+- [Event-Naming-Conventions.md](../Messaging/Event-Naming-Conventions.md) - Event contracts
+- [MESSAGING_IMPLEMENTATION.md](../Messaging/MESSAGING_IMPLEMENTATION.md) - RabbitMQ patterns
+- [SAGA_COMPENSATION_IMPLEMENTATION.md](../Messaging/SAGA_COMPENSATION_IMPLEMENTATION.md) - Saga implementation
