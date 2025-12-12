@@ -8,24 +8,51 @@ on:
 jobs:
   CodeQL-Build:
     runs-on: ubuntu-latest
-
+    
     permissions:
       security-events: write
+      contents: read
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp', 'java' ]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install .NET SDK
+      - name: Setup .NET SDK
+        if: matrix.language == 'csharp'
         uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Setup Java JDK
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Build C# Code
+        if: matrix.language == 'csharp'
+        run: dotnet build ProductOrderingSystem.sln --configuration Release
         env:
           SkipNSwag: 'True'
 
+      - name: Build Java Code
+        if: matrix.language == 'java'
+        working-directory: src/Services/NotificationService
+        run: mvn clean compile -DskipTests -B -V
+
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
