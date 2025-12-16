@@ -42,6 +42,7 @@ var postgres = builder.AddPostgres("postgres")
     .WithLifetime(ContainerLifetime.Persistent);  // Keep container running between sessions
 
 var inventoryDb = postgres.AddDatabase("inventorydb");
+var analyticsDb = postgres.AddDatabase("analyticsdb");
 
 // Add Identity Service with MongoDB and RabbitMQ
 var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service")
@@ -110,9 +111,19 @@ var customerService = builder.AddProject<Projects.ProductOrderingSystem_Customer
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
+// Add Analytics Service with PostgreSQL and RabbitMQ
+var analyticsService = builder.AddProject<Projects.ProductOrderingSystem_AnalyticsService_WebAPI>("analytics-service")
+    .WithReference(analyticsDb)
+    .WithReference(messaging)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WaitFor(postgres)
+    .WaitFor(messaging)
+    .WithExternalHttpEndpoints();
+
 // Add API Gateway with references to all services
 // Use a fixed HTTP endpoint so the frontend can reliably connect
 var apiGateway = builder.AddProject<Projects.ProductOrderingSystem_ApiGateway>("api-gateway")
+    .WithReference(analyticsService)
     .WithReference(identityService)
     .WithReference(productService)
     .WithReference(orderService)

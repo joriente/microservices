@@ -93,9 +93,45 @@ The Analytics Service will provide real-time and batch analytics capabilities fo
 ## Data Flow Architecture
 
 ### 1. Event Ingestion
+
+The Analytics Service implements a **dual-write pattern** for resilience and flexibility:
+
+#### Storage Targets
+
+**PostgreSQL (Local Analytics Database)**
+- **Purpose**: 
+  - Local operational analytics with fast query response
+  - Resilience/fallback if Event Hubs is down or misconfigured
+  - Development and debugging without Azure portal access
+- **Data Retention**: Recent events (typically 30-90 days)
+- **Query Performance**: Millisecond latency for operational queries
+- **Use Case**: Real-time dashboards, troubleshooting, development
+
+**Azure Event Hubs → Microsoft Fabric (Cloud Analytics)**
+- **Purpose**:
+  - Long-term historical analytics at scale
+  - Advanced BI with Power BI integration
+  - Machine learning and predictive analytics
+- **Data Retention**: Unlimited (Data Lake storage)
+- **Query Performance**: Optimized for complex aggregations and large datasets
+- **Use Case**: Executive dashboards, trend analysis, data science
+
+#### Architectural Options
+
+| Approach | Pros | Cons | Best For |
+|----------|------|------|----------|
+| **Both (Current)** | Resilience, local + cloud analytics, flexibility | Dual writes, storage costs, complexity | Production systems needing both operational and analytical workloads |
+| **Event Hubs/Fabric Only** | Simpler code, cloud-native, single source of truth | Cloud dependency, latency for operational queries | Cloud-first organizations, BI-focused analytics |
+| **PostgreSQL Only** | Self-contained, no cloud costs, simple | No Fabric/Power BI, limited scale | On-premises deployments, dev/test environments |
+
+**Recommendation**: Start with dual-write for flexibility, then remove PostgreSQL if Fabric covers all analytics needs.
+
+#### Event Flow
 - **Source**: Domain events from microservices via RabbitMQ
 - **Consumer**: Analytics Service with MassTransit consumers
-- **Target**: Azure Event Hubs for streaming data pipeline
+- **Targets**: 
+  1. PostgreSQL (immediate write, local queries)
+  2. Azure Event Hubs (streaming to Fabric pipeline)
 
 ### 2. Data Lake Zones (Medallion Architecture)
 
