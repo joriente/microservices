@@ -32,13 +32,22 @@ if (publishEvents)
         x.UsingRabbitMq((context, cfg) =>
         {
             var connectionString = configuration.GetConnectionString("messaging");
-            var uri = new Uri(connectionString ?? "amqp://localhost:5672");
             
-            cfg.Host(uri, h =>
+            // Aspire provides connection string in format: amqp://user:password@host:port
+            // Parse it to extract credentials
+            if (!string.IsNullOrEmpty(connectionString))
             {
-                h.Username("guest");
-                h.Password("guest");
-            });
+                cfg.Host(new Uri(connectionString));
+            }
+            else
+            {
+                // Fallback to localhost with default credentials
+                cfg.Host("localhost", h =>
+                {
+                    h.Username("guest");
+                    h.Password("guest");
+                });
+            }
 
             cfg.ConfigureEndpoints(context);
         });
@@ -73,6 +82,10 @@ services.AddTransient<ProductSeeder>();
 services.AddTransient<IdentitySeeder>();
 services.AddTransient<DataSeederRunner>();
 
+// Add RabbitMQ readiness checker
+services.AddHttpClient<IRabbitMqReadinessChecker, RabbitMqReadinessChecker>();
+services.AddSingleton<IRabbitMqReadinessChecker, RabbitMqReadinessChecker>();
+
 var serviceProvider = services.BuildServiceProvider();
 
 // Run the seeder
@@ -101,10 +114,12 @@ try
     logger.LogInformation("✓ Data seeding completed successfully!");
     
     // Give events time to be published before shutting down
+    // With 200ms delay between events and potential MassTransit batching/buffering,
+    // we need to wait longer to ensure all messages are sent to RabbitMQ
     if (publishEvents)
     {
-        logger.LogInformation("Waiting for events to be published...");
-        await Task.Delay(2000);
+        logger.LogInformation("Waiting 10 seconds for all events to be fully published to RabbitMQ...");
+        await Task.Delay(10000);
         
         var busControl = serviceProvider.GetService<IBusControl>();
         if (busControl != null)

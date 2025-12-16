@@ -70,19 +70,26 @@ public class ProductSeeder : BackgroundService
                 
                 var searchResult = await mediator.Send(searchQuery, cancellationToken);
                 
-                var expectedProductCount = _configuration.GetValue<int>("Seeding:ProductCount", 100);
-                
-                if (searchResult.TotalCount >= expectedProductCount)
+                if (searchResult.IsError)
                 {
-                    _logger.LogInformation("Database already contains {Count} products (expected: {Expected}). Skipping seed.", 
-                        searchResult.TotalCount, expectedProductCount);
+                    _logger.LogError("Error checking existing products: {Errors}", 
+                        string.Join(", ", searchResult.Errors.Select(e => e.Description)));
                     return;
                 }
                 
-                if (searchResult.TotalCount > 0)
+                var expectedProductCount = _configuration.GetValue<int>("Seeding:ProductCount", 100);
+                
+                if (searchResult.Value.TotalCount >= expectedProductCount)
+                {
+                    _logger.LogInformation("Database already contains {Count} products (expected: {Expected}). Skipping seed.", 
+                        searchResult.Value.TotalCount, expectedProductCount);
+                    return;
+                }
+                
+                if (searchResult.Value.TotalCount > 0)
                 {
                     _logger.LogWarning("Database contains {Count} products but expected {Expected}. Clearing existing products and re-seeding...", 
-                        searchResult.TotalCount, expectedProductCount);
+                        searchResult.Value.TotalCount, expectedProductCount);
                     
                     // Get the repository to clear existing products
                     var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
@@ -91,7 +98,7 @@ public class ProductSeeder : BackgroundService
                     {
                         await productRepository.DeleteAsync(product.Id);
                     }
-                    _logger.LogInformation("Cleared {Count} existing products", searchResult.TotalCount);
+                    _logger.LogInformation("Cleared {Count} existing products", searchResult.Value.TotalCount);
                 }
 
                 _logger.LogInformation("Seeding product database with sample data via MediatR commands...");

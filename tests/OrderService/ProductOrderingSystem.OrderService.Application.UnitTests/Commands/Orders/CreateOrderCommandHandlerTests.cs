@@ -1,6 +1,7 @@
 using ErrorOr;
 using AwesomeAssertions;
 using MassTransit;
+using Microsoft.Extensions.Logging;
 using Moq;
 using ProductOrderingSystem.OrderService.Application.Commands.Orders;
 using ProductOrderingSystem.OrderService.Domain.Entities;
@@ -14,6 +15,7 @@ public class CreateOrderCommandHandlerTests
     private readonly Mock<IOrderRepository> _orderRepositoryMock;
     private readonly Mock<IProductCacheRepository> _productCacheRepositoryMock;
     private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+    private readonly Mock<ILogger<CreateOrderCommandHandler>> _loggerMock;
     private readonly CreateOrderCommandHandler _handler;
 
     public CreateOrderCommandHandlerTests()
@@ -21,11 +23,13 @@ public class CreateOrderCommandHandlerTests
         _orderRepositoryMock = new Mock<IOrderRepository>();
         _productCacheRepositoryMock = new Mock<IProductCacheRepository>();
         _publishEndpointMock = new Mock<IPublishEndpoint>();
+        _loggerMock = new Mock<ILogger<CreateOrderCommandHandler>>();
         
         _handler = new CreateOrderCommandHandler(
             _orderRepositoryMock.Object,
             _productCacheRepositoryMock.Object,
-            _publishEndpointMock.Object);
+            _publishEndpointMock.Object,
+            _loggerMock.Object);
     }
 
     [Fact]

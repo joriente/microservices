@@ -1,3 +1,5 @@
+using MongoDB.Bson.Serialization.Attributes;
+
 namespace ProductOrderingSystem.OrderService.Domain.Entities;
 
 /// <summary>
@@ -9,6 +11,7 @@ public class ProductCacheEntry
     /// <summary>
     /// Product identifier (same as ProductId from Product Service)
     /// </summary>
+    [BsonId]
     public string Id { get; set; } = string.Empty;
     
     /// <summary>

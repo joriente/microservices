@@ -1,38 +1,32 @@
 version: '3.8'
 
-services:
-  mongodb:
-    image: mongo:7
-    container_name: ProductOrdering-mongodb-legacy
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-    volumes:
-      - mongodb_data:/data/db
-      - mongodb_config:/data/configdb
-    networks:
-      - product-ordering-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
+# MongoDB, RabbitMQ, and PostgreSQL are now managed by .NET Aspire
+# This docker-compose file is kept for reference but containers are created by Aspire
+# If you want to run services without Aspire, uncomment the services below
 
-  seq:
-    image: datalust/seq:latest
-    container_name: ProductOrdering-seq-legacy
-    restart: unless-stopped
-    ports:
-      - "5341:80"     # Seq UI
-    environment:
-      ACCEPT_EULA: Y
-    volumes:
-      - seq_data:/data
-    networks:
-      - product-ordering-network
+services:
+  # MongoDB - DISABLED (Aspire manages this)
+  # mongodb:
+  #   image: mongo:7
+  #   container_name: ProductOrdering-mongodb-legacy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "27017:27017"
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: admin
+  #     MONGO_INITDB_ROOT_PASSWORD: admin123
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #     - mongodb_config:/data/configdb
+  #   networks:
+  #     - product-ordering-network
+
+  # RabbitMQ and PostgreSQL are also managed by Aspire
+  # This file can be deleted or kept for non-Aspire deployments
+  
+  placeholder:
+    image: hello-world
+    container_name: ProductOrdering-placeholder
 
 volumes:
   mongodb_data:

@@ -332,24 +332,42 @@
             
             Console.WriteLine($"PlaceOrder - Order created: {orderId}");
 
-            // Step 2: Process Payment
-            var totalWithTax = cart.TotalAmount * 1.08m;
-            var paymentRequest = new ProcessPaymentRequest(
-                OrderId: orderId.Value,
-                UserId: customerId,
-                Amount: totalWithTax,
-                Currency: "USD"
-            );
+            // Payment is processed asynchronously via events
+            // Poll the order status to check when it's confirmed
+            Snackbar.Add("Order created! Processing payment...", Severity.Info);
             
-            Console.WriteLine($"PlaceOrder - Processing payment for order {orderId}, amount: {totalWithTax:C}");
-
-            var paymentResponse = await PaymentService.ProcessPaymentAsync(paymentRequest);
+            var maxAttempts = 10;
+            var delayMs = 500;
+            var confirmed = false;
             
-            Console.WriteLine($"PlaceOrder - Payment response: {(paymentResponse != null ? $"Status={paymentResponse.Status}" : "NULL")}");
-
-            if (paymentResponse != null && paymentResponse.Status == "Completed")
+            for (int i = 0; i < maxAttempts; i++)
             {
-                // Step 3: Clear cart
+                await Task.Delay(delayMs);
+                
+                try
+                {
+                    var order = await OrderService.GetOrderByIdAsync(orderId.Value);
+                    
+                    if (order?.Status == OrderStatus.Confirmed)
+                    {
+                        confirmed = true;
+                        break;
+                    }
+                    else if (order?.Status == OrderStatus.Cancelled)
+                    {
+                        Snackbar.Add("Order was cancelled. Please try again.", Severity.Error);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error polling order status: {ex.Message}");
+                }
+            }
+            
+            if (confirmed)
+            {
+                // Clear cart
                 await CartService.ClearCartAsync();
                 
                 Snackbar.Add("Order placed successfully! 🎉", Severity.Success);
@@ -360,8 +378,8 @@
             }
             else
             {
-                var errorMessage = paymentResponse?.Message ?? "Payment processing failed";
-                Snackbar.Add($"Payment failed: {errorMessage}", Severity.Error);
+                Snackbar.Add("Order created but payment is still processing. Check your orders page.", Severity.Warning);
+                Navigation.NavigateTo($"/orders");
             }
         }
         catch (HttpRequestException httpEx)

@@ -10,10 +10,8 @@ public class PaymentRepository : IPaymentRepository
 {
     private readonly IMongoCollection<Payment> _payments;
 
-    public PaymentRepository(IOptions<MongoDbSettings> settings)
+    public PaymentRepository(IMongoDatabase mongoDatabase)
     {
-        var mongoClient = new MongoClient(settings.Value.ConnectionString);
-        var mongoDatabase = mongoClient.GetDatabase(settings.Value.DatabaseName);
         _payments = mongoDatabase.GetCollection<Payment>("Payments");
 
         // Create indexes

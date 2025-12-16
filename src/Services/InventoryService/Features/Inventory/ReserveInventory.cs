@@ -57,108 +57,114 @@ public static class ReserveInventory
 
         public async Task<Result> Handle(Command request, CancellationToken cancellationToken)
         {
-            // Use EF Core transaction
-            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-
-            try
+            // Use execution strategy to handle transactions with retry logic
+            var strategy = _context.Database.CreateExecutionStrategy();
+            
+            return await strategy.ExecuteAsync(async () =>
             {
-                // Check and reserve all items
-                foreach (var item in request.Items)
-                {
-                    var inventoryItem = await _context.InventoryItems
-                        .FirstOrDefaultAsync(x => x.ProductId == item.ProductId, cancellationToken);
+                // Use EF Core transaction
+                using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-                    if (inventoryItem == null)
-                    {
-                        _logger.LogWarning("Product {ProductId} not found in inventory", item.ProductId);
-                        
-                        await transaction.RollbackAsync(cancellationToken);
-                        
-                        // Publish reservation failed event
-                        await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
-                            request.OrderId,
-                            $"Product {item.ProductId} not found in inventory",
-                            DateTime.UtcNow
-                        ), cancellationToken);
-                        
-                        return new Result(false, null, $"Product {item.ProductId} not found");
-                    }
-
-                    if (inventoryItem.QuantityAvailable < item.Quantity)
-                    {
-                        _logger.LogWarning("Insufficient inventory for product {ProductId}. Available: {Available}, Requested: {Requested}",
-                            item.ProductId, inventoryItem.QuantityAvailable, item.Quantity);
-                        
-                        await transaction.RollbackAsync(cancellationToken);
-                        
-                        // Publish reservation failed event
-                        await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
-                            request.OrderId,
-                            $"Insufficient inventory for product {item.ProductId}",
-                            DateTime.UtcNow
-                        ), cancellationToken);
-                        
-                        return new Result(false, null, $"Insufficient inventory for product {item.ProductId}");
-                    }
-
-                    // Reserve the inventory
-                    inventoryItem.Reserve(item.Quantity);
-
-                    // Create reservation record
-                    var reservation = new InventoryReservation
-                    {
-                        Id = Guid.NewGuid(),
-                        OrderId = request.OrderId,
-                        ProductId = item.ProductId,
-                        Quantity = item.Quantity,
-                        Status = ReservationStatus.Reserved,
-                        CreatedAt = DateTime.UtcNow,
-                        ExpiresAt = DateTime.UtcNow.AddMinutes(30) // Reservation expires in 30 minutes
-                    };
-
-                    _context.InventoryReservations.Add(reservation);
-                }
-
-                // Save all changes within the transaction
-                await _context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                _logger.LogInformation("Successfully reserved inventory for order {OrderId}", request.OrderId);
-
-                // Publish inventory reserved event
-                await _publishEndpoint.Publish(new InventoryReservedEvent(
-                    request.OrderId,
-                    request.Items.Select(i => new ReservedItemDto(
-                        i.ProductId,
-                        i.Quantity
-                    )).ToList(),
-                    DateTime.UtcNow
-                ), cancellationToken);
-
-                // Return the order ID as reservation identifier
-                return new Result(true, request.OrderId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error reserving inventory for order {OrderId}", request.OrderId);
-                
                 try
                 {
-                    await transaction.RollbackAsync(cancellationToken);
+                    // Check and reserve all items
+                    foreach (var item in request.Items)
+                    {
+                        var inventoryItem = await _context.InventoryItems
+                            .FirstOrDefaultAsync(x => x.ProductId == item.ProductId, cancellationToken);
+
+                        if (inventoryItem == null)
+                        {
+                            _logger.LogWarning("Product {ProductId} not found in inventory", item.ProductId);
+                            
+                            await transaction.RollbackAsync(cancellationToken);
+                            
+                            // Publish reservation failed event
+                            await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
+                                request.OrderId,
+                                $"Product {item.ProductId} not found in inventory",
+                                DateTime.UtcNow
+                            ), cancellationToken);
+                            
+                            return new Result(false, null, $"Product {item.ProductId} not found");
+                        }
+
+                        if (inventoryItem.QuantityAvailable < item.Quantity)
+                        {
+                            _logger.LogWarning("Insufficient inventory for product {ProductId}. Available: {Available}, Requested: {Requested}",
+                                item.ProductId, inventoryItem.QuantityAvailable, item.Quantity);
+                            
+                            await transaction.RollbackAsync(cancellationToken);
+                            
+                            // Publish reservation failed event
+                            await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
+                                request.OrderId,
+                                $"Insufficient inventory for product {item.ProductId}",
+                                DateTime.UtcNow
+                            ), cancellationToken);
+                            
+                            return new Result(false, null, $"Insufficient inventory for product {item.ProductId}");
+                        }
+
+                        // Reserve the inventory
+                        inventoryItem.Reserve(item.Quantity);
+
+                        // Create reservation record
+                        var reservation = new InventoryReservation
+                        {
+                            Id = Guid.NewGuid(),
+                            OrderId = request.OrderId,
+                            ProductId = item.ProductId,
+                            Quantity = item.Quantity,
+                            Status = ReservationStatus.Reserved,
+                            CreatedAt = DateTime.UtcNow,
+                            ExpiresAt = DateTime.UtcNow.AddMinutes(30) // Reservation expires in 30 minutes
+                        };
+
+                        _context.InventoryReservations.Add(reservation);
+                    }
+
+                    // Save all changes within the transaction
+                    await _context.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+
+                    _logger.LogInformation("Successfully reserved inventory for order {OrderId}", request.OrderId);
+
+                    // Publish inventory reserved event
+                    await _publishEndpoint.Publish(new InventoryReservedEvent(
+                        request.OrderId,
+                        request.Items.Select(i => new ReservedItemDto(
+                            i.ProductId,
+                            i.Quantity
+                        )).ToList(),
+                        DateTime.UtcNow
+                    ), cancellationToken);
+
+                    // Return the order ID as reservation identifier
+                    return new Result(true, request.OrderId);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore errors during rollback
+                    _logger.LogError(ex, "Error reserving inventory for order {OrderId}", request.OrderId);
+                    
+                    try
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                    }
+                    catch
+                    {
+                        // Ignore errors during rollback
+                    }
+                    
+                    await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
+                        request.OrderId,
+                        ex.Message,
+                        DateTime.UtcNow
+                    ), cancellationToken);
+                    
+                    return new Result(false, null, ex.Message);
                 }
-                
-                await _publishEndpoint.Publish(new InventoryReservationFailedEvent(
-                    request.OrderId,
-                    ex.Message,
-                    DateTime.UtcNow
-                ), cancellationToken);
-                
-                return new Result(false, null, ex.Message);
-            }
+            });
         }
     }
 

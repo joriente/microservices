@@ -1,4 +1,6 @@
 using ErrorOr;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using ProductOrderingSystem.PaymentService.Domain.Enums;
 using ProductOrderingSystem.PaymentService.Domain.Events;
 using ProductOrderingSystem.PaymentService.Domain.ValueObjects;
@@ -7,9 +9,16 @@ namespace ProductOrderingSystem.PaymentService.Domain.Entities;
 
 public class Payment
 {
+    [BsonId]
+    [BsonRepresentation(BsonType.String)]
     public Guid Id { get; private set; }
+    
+    [BsonRepresentation(BsonType.String)]
     public Guid OrderId { get; private set; }
+    
+    [BsonRepresentation(BsonType.String)]
     public Guid UserId { get; private set; }
+    
     public Money Amount { get; private set; }
     public PaymentStatus Status { get; private set; }
     public string? StripePaymentIntentId { get; private set; }
@@ -19,6 +28,8 @@ public class Payment
     public DateTime? CompletedAt { get; private set; }
 
     private readonly List<object> _domainEvents = new();
+    
+    [BsonIgnore]
     public IReadOnlyList<object> DomainEvents => _domainEvents.AsReadOnly();
 
     private Payment() 

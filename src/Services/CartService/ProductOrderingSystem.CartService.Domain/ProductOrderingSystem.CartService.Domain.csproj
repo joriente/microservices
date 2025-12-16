@@ -10,4 +10,8 @@
     <ProjectReference Include="..\..\..\Shared\ProductOrderingSystem.Shared.Contracts\ProductOrderingSystem.Shared.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" />
+  </ItemGroup>
+
 </Project>

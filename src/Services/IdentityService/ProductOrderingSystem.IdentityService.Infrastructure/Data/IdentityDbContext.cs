@@ -8,13 +8,9 @@ public class IdentityDbContext
 {
     private readonly IMongoDatabase _database;
 
-    public IdentityDbContext(IConfiguration configuration)
+    public IdentityDbContext(IMongoDatabase database)
     {
-        var connectionString = configuration.GetConnectionString("IdentityDb") 
-            ?? throw new InvalidOperationException("IdentityDb connection string not found");
-        
-        var client = new MongoClient(connectionString);
-        _database = client.GetDatabase("identitydb");
+        _database = database;
     }
 
     public IMongoCollection<User> Users => _database.GetCollection<User>("users");

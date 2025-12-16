@@ -15,13 +15,14 @@ builder.Configuration["AppHost:ContainerRegistry"] = "ProductOrdering";
 // Add RabbitMQ for messaging (ARM64 compatible for Raspberry Pi)
 var messaging = builder.AddRabbitMQ("messaging")
     .WithContainerName("ProductOrdering-rabbitmq")
+    .WithEndpoint("tcp", endpoint => endpoint.Port = 5672)  // Fixed AMQP port
     .WithManagementPlugin()  // Adds RabbitMQ management UI at http://localhost:15672
-    .WithLifetime(ContainerLifetime.Persistent)
     .PublishAsConnectionString();
 
 // Add MongoDB container with Aspire
 var mongodb = builder.AddMongoDB("mongodb")
     .WithContainerName("ProductOrdering-mongodb")
+    .WithEndpoint("tcp", endpoint => endpoint.Port = 27017)  // Fixed port for MongoDB
     .WithMongoExpress()  // Adds MongoDB Express web UI
     .WithLifetime(ContainerLifetime.Persistent);  // Keep container running between sessions
 
@@ -36,73 +37,82 @@ var customerDb = mongodb.AddDatabase("customerdb");
 // Add PostgreSQL for Inventory Service
 var postgres = builder.AddPostgres("postgres")
     .WithContainerName("ProductOrdering-postgres")
+    .WithEndpoint("tcp", endpoint => endpoint.Port = 5432)  // Fixed port for PostgreSQL
     .WithPgAdmin()  // Adds pgAdmin web UI
     .WithLifetime(ContainerLifetime.Persistent);  // Keep container running between sessions
 
 var inventoryDb = postgres.AddDatabase("inventorydb");
 
-// Add Data Seeder - runs once to seed initial data
-var dataSeeder = builder.AddProject<Projects.ProductOrderingSystem_DataSeeder>("data-seeder")
-    .WithReference(mongodb)
-    .WithReference(messaging)
-    .WaitFor(mongodb)
-    .WaitFor(messaging);
-
 // Add Identity Service with MongoDB and RabbitMQ
-// Use the "http" launch profile to get correct port configuration
-var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service", launchProfileName: "http")
+var identityService = builder.AddProject<Projects.ProductOrderingSystem_IdentityService_WebAPI>("identity-service")
     .WithReference(identityDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(messaging)
-    .WaitFor(dataSeeder);  // Wait for seeder to complete
+    .WaitFor(messaging);
 
 // Add Product Service with its own MongoDB database and RabbitMQ
-var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service", launchProfileName: "http")
+// Product Service must start BEFORE DataSeeder so it can publish events when products are created
+var productService = builder.AddProject<Projects.ProductOrderingSystem_ProductService_WebAPI>("product-service")
     .WithReference(productDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(messaging)
-    .WaitFor(dataSeeder);  // Wait for seeder to complete
+    .WaitFor(messaging);
 
 // Add Order Service with its own MongoDB database and RabbitMQ
-var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service", launchProfileName: "http")
+var orderService = builder.AddProject<Projects.ProductOrderingSystem_OrderService_WebAPI>("order-service")
     .WithReference(orderDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(messaging);
+    .WaitFor(messaging)
+    .WaitFor(productService);  // Wait for ProductService to ensure ProductCreatedEvents are available
 
 // Add Cart Service with its own MongoDB database and RabbitMQ
-var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_WebAPI>("cart-service", launchProfileName: "http")
+var cartService = builder.AddProject<Projects.ProductOrderingSystem_CartService_WebAPI>("cart-service")
     .WithReference(cartDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(messaging);
+    .WaitFor(messaging)
+    .WaitFor(productService);  // Wait for ProductService to ensure ProductCreatedEvents are available
+
+// Add Inventory Service with its own PostgreSQL database and RabbitMQ
+var inventoryService = builder.AddProject<Projects.ProductOrderingSystem_InventoryService>("inventory-service")
+    .WithReference(inventoryDb)
+    .WithReference(messaging)
+    .WaitFor(postgres)
+    .WaitFor(messaging)
+    .WaitFor(productService);  // Wait for ProductService to ensure ProductCreatedEvents are available
+
+// Add Data Seeder - runs AFTER ProductService/OrderService/CartService/InventoryService are ready
+// This ensures consumers are listening when events are published
+var dataSeeder = builder.AddProject<Projects.ProductOrderingSystem_DataSeeder>("data-seeder")
+    .WithReference(mongodb)
+    .WithReference(messaging)
+    .WithEnvironment("ConnectionStrings__messaging-management", "http://localhost:15672")  // RabbitMQ Management API
+    .WaitFor(mongodb)
+    .WaitFor(messaging)
+    .WaitFor(productService)   // Wait for ProductService to be ready to receive commands
+    .WaitFor(orderService)     // Wait for OrderService consumer to be ready
+    .WaitFor(cartService)      // Wait for CartService consumer to be ready
+    .WaitFor(inventoryService);  // Wait for InventoryService consumer to be ready
 
 // Add Payment Service with its own MongoDB database and RabbitMQ
-var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentService_WebAPI>("payment-service", launchProfileName: "http")
+var paymentService = builder.AddProject<Projects.ProductOrderingSystem_PaymentService_WebAPI>("payment-service")
     .WithReference(paymentDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
-    .WaitFor(messaging);
+    .WaitFor(messaging)
+    .WaitFor(orderService);  // Wait for OrderService to ensure OrderCreatedEvents are available
 
 // Add Customer Service with its own MongoDB database and RabbitMQ
-var customerService = builder.AddProject<Projects.ProductOrderingSystem_CustomerService_WebAPI>("customer-service", launchProfileName: "http")
+var customerService = builder.AddProject<Projects.ProductOrderingSystem_CustomerService_WebAPI>("customer-service")
     .WithReference(customerDb)
     .WithReference(messaging)
     .WaitFor(mongodb)
     .WaitFor(messaging);
 
-// Add Inventory Service with its own PostgreSQL database and RabbitMQ
-var inventoryService = builder.AddProject<Projects.ProductOrderingSystem_InventoryService>("inventory-service", launchProfileName: "http")
-    .WithReference(inventoryDb)
-    .WithReference(messaging)
-    .WaitFor(postgres)
-    .WaitFor(messaging);
-
 // Add API Gateway with references to all services
 // Use a fixed HTTP endpoint so the frontend can reliably connect
-var apiGateway = builder.AddProject<Projects.ProductOrderingSystem_ApiGateway>("api-gateway", launchProfileName: "http")
+var apiGateway = builder.AddProject<Projects.ProductOrderingSystem_ApiGateway>("api-gateway")
     .WithReference(identityService)
     .WithReference(productService)
     .WithReference(orderService)

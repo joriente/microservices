@@ -57,6 +57,13 @@ public static class ProductEndpoints
             .Produces(204)
             .Produces(404)
             .Produces(500);
+
+        // POST /api/products/sync-cache - Republish events for all products
+        productsApi.MapPost("/sync-cache", SyncProductCache)
+            .WithName("SyncProductCache")
+            .WithSummary("Republish ProductCreatedEvent for all existing products to populate consumer caches")
+            .Produces(200)
+            .Produces(500);
     }
 
     private static async Task<IResult> SearchProducts(
@@ -89,30 +96,41 @@ public static class ProductEndpoints
 
             var result = await mediator.Send(query);
 
-            logger.LogInformation(
-                "SearchProducts completed - Found {TotalCount} products, returning page {Page}/{TotalPages}",
-                result.TotalCount,
-                result.Page,
-                (int)Math.Ceiling(result.TotalCount / (double)result.PageSize)
-            );
+            return result.Match(
+                searchResult =>
+                {
+                    logger.LogInformation(
+                        "SearchProducts completed - Found {TotalCount} products, returning page {Page}/{TotalPages}",
+                        searchResult.TotalCount,
+                        searchResult.Page,
+                        (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize)
+                    );
 
-            // Calculate pagination metadata
-            var totalPages = (int)Math.Ceiling(result.TotalCount / (double)result.PageSize);
-            var paginationMetadata = new PaginationMetadata(
-                Page: result.Page,
-                PageSize: result.PageSize,
-                TotalCount: result.TotalCount,
-                TotalPages: totalPages,
-                HasPrevious: result.Page > 1,
-                HasNext: result.Page < totalPages
-            );
+                    // Calculate pagination metadata
+                    var totalPages = (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize);
+                    var paginationMetadata = new PaginationMetadata(
+                        Page: searchResult.Page,
+                        PageSize: searchResult.PageSize,
+                        TotalCount: searchResult.TotalCount,
+                        TotalPages: totalPages,
+                        HasPrevious: searchResult.Page > 1,
+                        HasNext: searchResult.Page < totalPages
+                    );
 
-            // Add pagination metadata to response header as JSON
-            httpContext.Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
+                    // Add pagination metadata to response header as JSON
+                    httpContext.Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
 
-            // Return only the products list in the body
-            var products = result.Products.Select(MapToDto).ToList();
-            return Results.Ok(products);
+                    // Return only the products list in the body
+                    var products = searchResult.Products.Select(MapToDto).ToList();
+                    return Results.Ok(products);
+                },
+                errors =>
+                {
+                    logger.LogWarning("SearchProducts failed - SearchTerm: {SearchTerm}, Errors: {Errors}",
+                        request.SearchTerm ?? "null",
+                        string.Join(", ", errors.Select(e => e.Description)));
+                    return MapErrorsToResult(errors);
+                });
         }
         catch (Exception ex)
         {
@@ -132,19 +150,24 @@ public static class ProductEndpoints
                 httpContext.Connection.RemoteIpAddress);
 
             var query = new GetProductByIdQuery(id);
-            var product = await mediator.Send(query);
+            var result = await mediator.Send(query);
 
-            if (product == null)
-            {
-                logger.LogWarning("GetProductById - Product not found: {ProductId}", id);
-                return Results.NotFound(new { message = "Product not found" });
-            }
+            return result.Match(
+                product =>
+                {
+                    logger.LogInformation("GetProductById completed - ProductId: {ProductId}, ProductName: {ProductName}", 
+                        id, 
+                        product.Name);
 
-            logger.LogInformation("GetProductById completed - ProductId: {ProductId}, ProductName: {ProductName}", 
-                id, 
-                product.Name);
-
-            return Results.Ok(MapToDto(product));
+                    return Results.Ok(MapToDto(product));
+                },
+                errors =>
+                {
+                    logger.LogWarning("GetProductById failed - ProductId: {ProductId}, Errors: {Errors}",
+                        id,
+                        string.Join(", ", errors.Select(e => e.Description)));
+                    return MapErrorsToResult(errors);
+                });
         }
         catch (Exception ex)
         {
@@ -263,6 +286,69 @@ public static class ProductEndpoints
         }
         catch (Exception ex)
         {
+            return Results.Problem(ex.Message, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> SyncProductCache(IMediator mediator, ILogger<Program> logger)
+    {
+        try
+        {
+            logger.LogInformation("SyncProductCache called - Republishing events for all products");
+
+            // Use search with no filters and large page size to get all products
+            var query = new SearchProductsQuery(
+                SearchTerm: null,
+                Category: null,
+                MinPrice: null,
+                MaxPrice: null,
+                Page: 1,
+                PageSize: 10000 // Get all products
+            );
+            
+            var result = await mediator.Send(query);
+            
+            if (result.IsError)
+            {
+                logger.LogError("Failed to retrieve products for sync: {Errors}", 
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                return Results.Problem("Failed to retrieve products for sync", statusCode: 500);
+            }
+            
+            var products = result.Value.Products;
+            var publishedCount = 0;
+
+            // Use the domain event system to republish events
+            foreach (var product in products)
+            {
+                try
+                {
+                    // Create a command to trigger the product update which will publish events
+                    var updateCommand = new UpdateProductCommand(
+                        product.Id,
+                        product.Name,
+                        product.Description,
+                        product.Price,
+                        product.StockQuantity,
+                        product.Category,
+                        product.ImageUrl
+                    );
+                    
+                    await mediator.Send(updateCommand);
+                    publishedCount++;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to republish event for product {ProductId}", product.Id);
+                }
+            }
+
+            logger.LogInformation("SyncProductCache completed - Republished events for {Count} products", publishedCount);
+            return Results.Ok(new { message = $"Republished events for {publishedCount} products", count = publishedCount });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error in SyncProductCache");
             return Results.Problem(ex.Message, statusCode: 500);
         }
     }

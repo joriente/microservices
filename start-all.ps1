@@ -14,39 +14,24 @@ Write-Host "Product Ordering System - Startup" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Step 1: Start Infrastructure
-Write-Host "Step 1: Starting Infrastructure (MongoDB + RabbitMQ + Seq)..." -ForegroundColor Yellow
+# Step 1: Infrastructure is managed by .NET Aspire
+Write-Host "Step 1: Infrastructure (MongoDB + RabbitMQ + PostgreSQL)..." -ForegroundColor Yellow
 Write-Host "----------------------------------------" -ForegroundColor Gray
-
-if (Test-Path "deployment\docker\docker-compose.yml") {
-    Push-Location "deployment\docker"
-    try {
-        docker-compose -p productordering up -d
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Infrastructure started successfully" -ForegroundColor Green
-            Write-Host "  - MongoDB: mongodb://localhost:27017 (admin/admin123)" -ForegroundColor Gray
-            Write-Host "  - RabbitMQ: amqp://localhost:5672 (guest/guest)" -ForegroundColor Gray
-            Write-Host "  - RabbitMQ UI: http://localhost:15672 (guest/guest)" -ForegroundColor Gray
-            Write-Host "  - Seq Logs: http://localhost:5341" -ForegroundColor Gray
-        } else {
-            Write-Host "✗ Failed to start infrastructure" -ForegroundColor Red
-            exit 1
-        }
-    } finally {
-        Pop-Location
-    }
-} else {
-    Write-Host "⚠ docker-compose.yml not found. Please ensure Docker is running." -ForegroundColor Yellow
-}
-
+Write-Host "ℹ️  Infrastructure containers are managed by .NET Aspire" -ForegroundColor Cyan
+Write-Host "   Aspire will automatically start:" -ForegroundColor Gray
+Write-Host "   - MongoDB (with separate databases per service)" -ForegroundColor Gray
+Write-Host "   - RabbitMQ (with management UI)" -ForegroundColor Gray
+Write-Host "   - PostgreSQL (for InventoryService)" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Waiting for services to be ready..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
+
+# Note: docker-compose.yml is disabled to avoid duplicate containers
+# All infrastructure is now managed by Aspire for better integration
 
 if ($InfrastructureOnly) {
     Write-Host ""
-    Write-Host "Infrastructure started. Exiting as requested." -ForegroundColor Green
-    exit 0
+    Write-Host "Infrastructure-only mode not supported with Aspire." -ForegroundColor Yellow
+    Write-Host "Please run without -InfrastructureOnly to start all services." -ForegroundColor Yellow
+    exit 1
 }
 
 # Step 2: Build if not skipped
@@ -104,9 +89,8 @@ switch ($choice) {
         Write-Host "Starting services with .NET Aspire..." -ForegroundColor Yellow
         Write-Host "----------------------------------------" -ForegroundColor Gray
         Write-Host ""
-        Write-Host "✓ Infrastructure Started:" -ForegroundColor Green
-        Write-Host "  📊 Aspire Dashboard: http://localhost:15888 (opens automatically)" -ForegroundColor Cyan
-        Write-Host "  📋 Seq Logs: http://localhost:5341" -ForegroundColor Cyan
+        Write-Host "✓ Infrastructure:" -ForegroundColor Green
+        Write-Host "  📊 Aspire Dashboard: Check console output for URL (typically http://localhost:15XXX)" -ForegroundColor Cyan
         Write-Host "  🐰 RabbitMQ Management: http://localhost:15672 (guest/guest)" -ForegroundColor Cyan
         Write-Host "  🍃 Mongo Express: http://localhost:8081 (admin/admin123)" -ForegroundColor Cyan
         Write-Host "  🐘 pgAdmin: Via Aspire dashboard → postgres resource" -ForegroundColor Cyan
@@ -135,6 +119,7 @@ switch ($choice) {
         
         # Start Aspire AppHost first
         Write-Host "Starting Aspire AppHost..." -ForegroundColor Yellow
+        Write-Host "NOTE: Aspire Dashboard URL will be displayed in the console below" -ForegroundColor Yellow
         Push-Location "src\Aspire\ProductOrderingSystem.AppHost"
         
         # Start Aspire in background
@@ -145,51 +130,63 @@ switch ($choice) {
         } -ArgumentList (Get-Location).Path
         
         # Wait for Aspire to start and create RabbitMQ container
-        Write-Host "Waiting for RabbitMQ container to be ready..." -ForegroundColor Yellow
-        $maxWaitSeconds = 60
+        Write-Host "Waiting for Aspire infrastructure to be ready..." -ForegroundColor Yellow
+        $maxWaitSeconds = 90
         $waited = 0
         $rabbitmqPort = $null
         
         while ($waited -lt $maxWaitSeconds) {
-            Start-Sleep -Seconds 2
-            $waited += 2
+            Start-Sleep -Seconds 3
+            $waited += 3
             
             # Check if RabbitMQ container exists and is running
             $container = docker ps --filter "name=ProductOrdering-rabbitmq" --format "{{.Names}}" 2>$null
             if ($container) {
-                # Get the mapped port
+                # Get the mapped port (format: 0.0.0.0:PORT)
                 $portMapping = docker port ProductOrdering-rabbitmq 5672 2>$null
                 if ($portMapping) {
-                    $rabbitmqPort = ($portMapping -split ':')[1]
-                    Write-Host "✓ RabbitMQ ready on port $rabbitmqPort" -ForegroundColor Green
-                    break
+                    # Extract just the port number
+                    if ($portMapping -match ':(\d+)$') {
+                        $rabbitmqPort = $matches[1]
+                        Write-Host "✓ RabbitMQ container ready on host port $rabbitmqPort" -ForegroundColor Green
+                        break
+                    }
                 }
+            }
+            
+            if ($waited % 9 -eq 0) {
+                Write-Host "  Still waiting for RabbitMQ container... ($waited/$maxWaitSeconds seconds)" -ForegroundColor Gray
             }
         }
         
         Pop-Location
         
         if (-not $rabbitmqPort) {
-            Write-Host "⚠ Could not detect RabbitMQ port, using default 5672" -ForegroundColor Yellow
+            Write-Host "⚠ Could not detect RabbitMQ dynamic port after $maxWaitSeconds seconds" -ForegroundColor Yellow
+            Write-Host "⚠ NotificationService may fail to connect. Check Aspire Dashboard for RabbitMQ status" -ForegroundColor Yellow
             $rabbitmqPort = "5672"
         }
         
+        # Wait a bit more for RabbitMQ to be fully ready
+        Write-Host "Waiting for RabbitMQ to accept connections..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 5
+        
         # Start NotificationService (Java) with RabbitMQ port
         Write-Host "Starting NotificationService (Java)..." -ForegroundColor Yellow
-        $notificationServicePath = "src\Services\NotificationService"
+        $notificationServicePath = Resolve-Path "src\Services\NotificationService"
         $notificationServiceJar = "$notificationServicePath\target\notification-service-1.0.0.jar"
         
         if (Test-Path $notificationServiceJar) {
-            # Set RabbitMQ environment variables for Java service
-            $env:RABBITMQ_HOST = "localhost"
-            $env:RABBITMQ_PORT = $rabbitmqPort
+            # Start Java service with environment variables passed directly
+            $javaCommand = "cd '$notificationServicePath'; `$env:RABBITMQ_HOST='localhost'; `$env:RABBITMQ_PORT='$rabbitmqPort'; java -jar target\notification-service-1.0.0.jar"
             
-            Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:RABBITMQ_HOST='localhost'; `$env:RABBITMQ_PORT='$rabbitmqPort'; cd '$notificationServicePath'; java -jar target\notification-service-1.0.0.jar" -WindowStyle Normal
+            Start-Process powershell -ArgumentList "-NoExit", "-Command", $javaCommand -WindowStyle Normal
             
             Write-Host "✓ NotificationService started in new window" -ForegroundColor Green
-            Write-Host "  📧 NotificationService: Connecting to RabbitMQ at localhost:$rabbitmqPort" -ForegroundColor Gray
+            Write-Host "  📧 NotificationService: RabbitMQ configured for localhost:$rabbitmqPort" -ForegroundColor Cyan
         } else {
-            Write-Host "⚠ NotificationService JAR not found. Skipping..." -ForegroundColor Yellow
+            Write-Host "⚠ NotificationService JAR not found at:" -ForegroundColor Yellow
+            Write-Host "  $notificationServiceJar" -ForegroundColor Gray
             Write-Host "  Run './Start-all.ps1' without -SkipBuild to build it" -ForegroundColor Gray
         }
         
@@ -254,7 +251,7 @@ switch ($choice) {
         Write-Host "cd src\frontend" -ForegroundColor White
         Write-Host "dotnet run" -ForegroundColor White
         Write-Host ""
-        Write-Host "Note: Make sure infrastructure (MongoDB, RabbitMQ, Seq, PostgreSQL) is running via docker-compose" -ForegroundColor Yellow
+        Write-Host "Note: Make sure infrastructure (MongoDB, RabbitMQ, PostgreSQL) is running via docker-compose" -ForegroundColor Yellow
         Write-Host ""
     }
 }
