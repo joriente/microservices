@@ -51,7 +51,7 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
             _logger.LogInformation("[UPSERT SUCCESS] Product {ProductId}", message.ProductId);
 
             _logger.LogInformation(
-                "[CONSUMER SUCCESS] ✓ Cached Product {ProductId} ({ProductName}) with Price {Price:C}",
+                "Successfully cached Product {ProductId} ({ProductName}) with Price {Price:C}",
                 message.ProductId,
                 message.Name,
                 message.Price);
@@ -59,7 +59,7 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "[CONSUMER FAILED] ✗ Product {ProductId} - Exception: {Message}",
+                "Error caching Product {ProductId} - Exception: {Message}",
                 message.ProductId,
                 ex.Message);
             throw;

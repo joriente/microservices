@@ -7,6 +7,7 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
 using ProductOrderingSystem.IdentityService.Domain.Repositories;
 using ProductOrderingSystem.Shared.Contracts.Identity;
 using Testcontainers.MongoDb;
@@ -34,11 +35,28 @@ public class AuthEndpointsIntegrationTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.ConfigureAppConfiguration((context, config) =>
+                builder.ConfigureServices(services =>
                 {
-                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    // Remove the existing IMongoClient and IMongoDatabase registrations
+                    var descriptors = services.Where(d =>
+                        d.ServiceType == typeof(IMongoClient) ||
+                        d.ServiceType == typeof(IMongoDatabase)).ToList();
+
+                    foreach (var descriptor in descriptors)
                     {
-                        ["ConnectionStrings:IdentityDb"] = _mongoContainer.GetConnectionString()
+                        services.Remove(descriptor);
+                    }
+
+                    // Register test MongoDB client and database
+                    services.AddSingleton<IMongoClient>(sp =>
+                    {
+                        return new MongoClient(_mongoContainer.GetConnectionString());
+                    });
+
+                    services.AddSingleton<IMongoDatabase>(sp =>
+                    {
+                        var client = sp.GetRequiredService<IMongoClient>();
+                        return client.GetDatabase("identitydb");
                     });
                 });
             });
