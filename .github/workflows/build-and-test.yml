@@ -149,11 +149,25 @@ jobs:
         echo "Searching for coverage files..."
         find TestResults -name "coverage.cobertura.xml" -type f || echo "No coverage files found"
 
+    - name: Install ReportGenerator
+      run: dotnet tool install --global dotnet-reportgenerator-globaltool
+
+    - name: Merge Coverage Reports
+      if: hashFiles('TestResults/**/coverage.cobertura.xml') != ''
+      run: |
+        reportgenerator \
+          -reports:"TestResults/**/coverage.cobertura.xml" \
+          -targetdir:"TestResults/CoverageMerged" \
+          -reporttypes:"Cobertura" \
+          -assemblyfilters:"-*.Tests;-*.Tests.*"
+        echo "Merged coverage report created"
+        ls -la TestResults/CoverageMerged/
+
     - name: Code Coverage Report
       uses: irongut/CodeCoverageSummary@v1.3.0
-      if: hashFiles('TestResults/**/coverage.cobertura.xml') != ''
+      if: hashFiles('TestResults/CoverageMerged/Cobertura.xml') != ''
       with:
-        filename: 'TestResults/**/coverage.cobertura.xml'
+        filename: 'TestResults/CoverageMerged/Cobertura.xml'
         badge: true
         fail_below_min: false
         format: markdown
