@@ -610,6 +610,256 @@ docker restart $(docker ps -q)
 - ✅ **Payment Integration** - Stripe test mode with order flow
 - ✅ **Power BI Dashboards** - Business intelligence with Microsoft Fabric Lakehouse
 
+## 🏛️ Architecture Patterns Explained
+
+This project demonstrates two complementary architectural approaches used across different services. Understanding when and why to use each pattern is key to building maintainable microservices.
+
+### Clean Architecture
+
+**Services using this pattern:** ProductService, OrderService, CustomerService, PaymentService
+
+**Overview:**
+Clean Architecture organizes code into concentric layers with strict dependency rules: dependencies always point inward, and inner layers know nothing about outer layers. This creates a highly testable, maintainable codebase where business logic is completely isolated from infrastructure concerns.
+
+**Layer Structure:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    WebAPI Layer                          │
+│  • Controllers, Endpoints, Middleware                   │
+│  • Dependency Injection setup                           │
+│  • Scalar/Swagger configuration                         │
+└──────────────────┬──────────────────────────────────────┘
+                   │ depends on ↓
+┌──────────────────▼──────────────────────────────────────┐
+│               Infrastructure Layer                       │
+│  • Database access (MongoDB, EF Core)                   │
+│  • External services (Stripe, SendGrid)                 │
+│  • MassTransit/RabbitMQ configuration                   │
+│  • Repository implementations                           │
+└──────────────────┬──────────────────────────────────────┘
+                   │ depends on ↓
+┌──────────────────▼──────────────────────────────────────┐
+│               Application Layer                          │
+│  • Use cases / Commands / Queries (CQRS)               │
+│  • MediatR handlers                                     │
+│  • Interfaces for repositories                          │
+│  • DTOs and mapping                                     │
+└──────────────────┬──────────────────────────────────────┘
+                   │ depends on ↓
+┌──────────────────▼──────────────────────────────────────┐
+│                   Domain Layer                           │
+│  • Entities (Product, Order, Customer)                  │
+│  • Value Objects                                        │
+│  • Domain Events                                        │
+│  • Business rules and validation                        │
+│  • NO dependencies on other layers                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Example: ProductService Structure**
+```
+ProductService/
+├── Domain/
+│   ├── Entities/
+│   │   └── Product.cs                    # Core business entity
+│   ├── ValueObjects/
+│   │   └── Money.cs                      # Encapsulated value type
+│   └── Events/
+│       └── ProductCreatedEvent.cs        # Domain event
+├── Application/
+│   ├── Products/
+│   │   ├── Commands/
+│   │   │   ├── CreateProductCommand.cs   # Command definition
+│   │   │   └── CreateProductHandler.cs   # Business logic
+│   │   └── Queries/
+│   │       ├── GetProductQuery.cs        # Query definition
+│   │       └── GetProductHandler.cs      # Query logic
+│   └── Interfaces/
+│       └── IProductRepository.cs         # Abstraction
+├── Infrastructure/
+│   ├── Persistence/
+│   │   ├── MongoDbContext.cs            # Database context
+│   │   └── ProductRepository.cs         # Implementation
+│   └── Messaging/
+│       └── EventPublisher.cs            # RabbitMQ integration
+└── WebAPI/
+    ├── Controllers/
+    │   └── ProductsController.cs        # HTTP endpoints
+    └── Program.cs                       # DI registration
+```
+
+**Benefits:**
+- ✅ **Testability** - Domain logic has zero dependencies, easy to unit test
+- ✅ **Maintainability** - Clear separation of concerns, easy to find code
+- ✅ **Flexibility** - Swap databases or frameworks without touching business logic
+- ✅ **Team Scalability** - Different teams can work on different layers
+- ✅ **CQRS-Ready** - Application layer naturally separates commands and queries
+
+**When to Use:**
+- Complex business logic and rules
+- Multiple UI/API consumers
+- Long-lived projects requiring maintainability
+- Large teams with specialized roles (domain experts, infrastructure devs)
+- When business rules change frequently but infrastructure is stable
+
+**Trade-offs:**
+- ⚠️ More files and folders (higher initial complexity)
+- ⚠️ Can feel over-engineered for simple CRUD operations
+- ⚠️ Requires discipline to maintain boundaries
+
+---
+
+### Vertical Slice Architecture
+
+**Services using this pattern:** InventoryService
+
+**Overview:**
+Vertical Slice Architecture organizes code by **feature** rather than by technical layer. Each feature (slice) contains everything it needs - from the HTTP endpoint down to the database query - in a single cohesive unit. This minimizes coupling between features and maximizes cohesion within features.
+
+**Structure:**
+
+```
+InventoryService/
+├── Features/
+│   ├── Inventory/
+│   │   ├── GetInventory.cs              # Everything for "Get Inventory"
+│   │   │   ├── Endpoint (Minimal API)
+│   │   │   ├── Query record
+│   │   │   ├── Handler (MediatR)
+│   │   │   ├── Response DTO
+│   │   │   └── Validator
+│   │   ├── ReserveStock.cs              # Everything for "Reserve Stock"
+│   │   │   ├── Endpoint
+│   │   │   ├── Command record
+│   │   │   ├── Handler
+│   │   │   ├── Database logic
+│   │   │   └── Validator
+│   │   └── CommitReservation.cs         # Everything for "Commit"
+│   └── EventConsumers/
+│       └── OrderCreatedConsumer.cs      # Event-driven feature
+├── Data/
+│   └── InventoryDbContext.cs            # Shared database context
+└── Program.cs                            # Minimal API routes
+```
+
+**Example: ReserveStock Feature (Single File)**
+```csharp
+// Features/Inventory/ReserveStock.cs
+namespace InventoryService.Features.Inventory;
+
+public static class ReserveStock
+{
+    // 1. Request DTO
+    public record Command(Guid ProductId, int Quantity, Guid OrderId);
+    
+    // 2. Response DTO
+    public record Response(Guid ReservationId, bool Success);
+    
+    // 3. Handler (all business logic in one place)
+    public class Handler : IRequestHandler<Command, Result<Response>>
+    {
+        private readonly InventoryDbContext _db;
+        
+        public async Task<Result<Response>> Handle(Command request, ...)
+        {
+            var inventory = await _db.Inventory
+                .FirstOrDefaultAsync(i => i.ProductId == request.ProductId);
+                
+            if (inventory.StockLevel < request.Quantity)
+                return Error.Validation("Insufficient stock");
+                
+            var reservation = new Reservation(
+                request.ProductId, 
+                request.Quantity, 
+                request.OrderId);
+                
+            inventory.Reserve(request.Quantity);
+            _db.Reservations.Add(reservation);
+            await _db.SaveChangesAsync();
+            
+            return new Response(reservation.Id, true);
+        }
+    }
+    
+    // 4. Validator
+    public class Validator : AbstractValidator<Command>
+    {
+        public Validator()
+        {
+            RuleFor(x => x.Quantity).GreaterThan(0);
+            RuleFor(x => x.ProductId).NotEmpty();
+        }
+    }
+    
+    // 5. Endpoint registration (called from Program.cs)
+    public static void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/inventory/reserve", async (
+            Command command, 
+            ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.Match(
+                success => Results.Ok(success),
+                error => Results.BadRequest(error));
+        })
+        .WithName("ReserveStock")
+        .WithTags("Inventory");
+    }
+}
+```
+
+**Benefits:**
+- ✅ **Feature Cohesion** - Everything for one feature in one place
+- ✅ **Easy Navigation** - No jumping between Domain/Application/Infrastructure folders
+- ✅ **Independent Changes** - Modify one feature without affecting others
+- ✅ **Reduced Coupling** - Features don't share abstractions unless needed
+- ✅ **Fast Development** - Add new features by copying and modifying existing slices
+- ✅ **Clear Boundaries** - Each file is a complete vertical "slice" through the stack
+
+**When to Use:**
+- Services with many independent features (like InventoryService with reserve/commit/release/adjust)
+- CRUD-heavy APIs where features don't share much logic
+- Small teams that want faster development velocity
+- Microservices where each service is small and focused
+- When features evolve independently
+
+**Trade-offs:**
+- ⚠️ Potential code duplication between slices (though this is often acceptable)
+- ⚠️ Harder to enforce consistent patterns across features
+- ⚠️ Shared domain logic may need to be extracted to a separate folder
+
+---
+
+### Comparison: When to Use Each
+
+| Consideration | Clean Architecture | Vertical Slice |
+|--------------|-------------------|----------------|
+| **Domain Complexity** | High - complex business rules shared across features | Low to Medium - mostly independent features |
+| **Code Sharing** | Many features share domain entities and rules | Features are largely independent |
+| **Team Structure** | Large teams with specialized roles | Small, cross-functional teams |
+| **Project Lifespan** | Long-lived, enterprise systems | Microservices with focused scope |
+| **Change Patterns** | Business rules change, infrastructure is stable | Features are added/modified frequently |
+| **Testing Strategy** | Extensive unit testing of domain layer | Feature-level integration tests |
+| **Development Speed** | Slower initial setup, faster for complex changes | Faster for new features, iterations |
+
+### Hybrid Approach (This Project)
+
+This codebase demonstrates both patterns intentionally:
+
+- **Clean Architecture** (ProductService, OrderService, etc.)
+  - Complex domain models (Order with status workflows, Product with pricing rules)
+  - Shared business logic across multiple endpoints
+  - CQRS with distinct command/query patterns
+
+- **Vertical Slice** (InventoryService)
+  - Independent features (reserve, commit, release, adjust stock)
+  - Event-driven operations that are self-contained
+  - PostgreSQL with EF Core for straightforward data access
+
+**The key insight:** Choose the architecture that matches your service's complexity and team needs. You can even mix patterns within a single system, as we do here.
+
 ## 📄 License
 
 This project is provided as-is for educational and demonstration purposes.
