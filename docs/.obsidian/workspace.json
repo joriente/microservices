@@ -34,23 +34,9 @@
               "icon": "lucide-file",
               "title": "New tab"
             }
-          },
-          {
-            "id": "9c72f2f457a5c991",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Planning/Microservices-Demo-Invite.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Microservices-Demo-Invite"
-            }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -247,13 +233,18 @@
       "mermaid-tools:Open Mermaid Toolbar": false
     }
   },
-  "active": "9c72f2f457a5c991",
+  "active": "9c87d1132cd43d79",
   "lastOpenFiles": [
-    "adr/20251212-analytics-with-microsoft-fabric.md",
-    "Planning/Microservices-Demo-Agenda.md",
-    "README.md",
+    "Services/Analytics-Architecture-Diagrams.md",
+    "Architecture/branching-strategy.md",
+    "Services/Fabric-Eventstream-Setup.md",
+    "Services/Analytics-EventHub-Integration.md",
     "adr/20251212-use-markdown-architectural-decision-records.md",
     "adr/20251212-use-log4brains-to-manage-the-adrs.md",
+    "adr/20251212-analytics-with-microsoft-fabric.md",
+    "Planning/Microservices-Demo-Invite.md",
+    "Planning/Microservices-Demo-Agenda.md",
+    "README.md",
     "adr/README.md",
     "adr/index.md",
     "adr/template.md",
@@ -271,11 +262,6 @@
     "Blue/Snippets/SQL Script Disposable Income.md",
     "Journal/Blue/Journal/2024-06-14.md",
     "Technical/Technical/Idempotency in rest api.md",
-    "publish the Obsidian Vid.md",
-    "Business/Journal/2025-02-15 - todays.md",
-    "Business/Journal/2025-02-14.md",
-    "Blue/Common Issues/Everymessage, check documents being generated or not, Unproduced Welcome Letters.md",
-    "code snippets.md",
     "Blog",
     "Vlog",
     "Business/Journal/Technical/Migrated/assets/why-not-jwt.png",

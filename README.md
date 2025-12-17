@@ -95,11 +95,26 @@ This automated script handles everything:
 
 ### 6.5️⃣ Seed Demo Data (Optional)
 
+⚠️ **Important**: Run the data seeder AFTER all services are running to ensure events are properly consumed.
+
 Run the data seeder to populate 100 sample products:
 
 ```powershell
 cd src/Tools/ProductOrderingSystem.DataSeeder
 dotnet run
+```
+
+This will:
+- Insert products into ProductService database (MongoDB)
+- Publish `ProductCreatedEvent` to RabbitMQ for each product
+- Populate OrderService and CartService product caches automatically
+- Create test users (admin and steve.hopper)
+
+> 💡 **Timing matters**: The seeder publishes events that OrderService and CartService consume to build their product caches. Make sure all services are running first!
+
+If you seeded data before starting all services, sync the caches:
+```powershell
+.\tests\Sync-ProductCache.ps1
 ```
 
 See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) for configuration options.

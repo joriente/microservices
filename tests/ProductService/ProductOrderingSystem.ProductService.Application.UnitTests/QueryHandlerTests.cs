@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using ErrorOr;
 using Moq;
 using ProductOrderingSystem.ProductService.Application.Queries.Products;
 using ProductOrderingSystem.ProductService.Domain.Entities;
@@ -33,16 +34,17 @@ public class GetProductByIdQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Id.Should().Be(product.Id);
-        result.Name.Should().Be(product.Name);
-        result.Description.Should().Be(product.Description);
-        result.Price.Should().Be(product.Price);
+        result.IsError.Should().BeFalse();
+        result.Value.Id.Should().Be(product.Id);
+        result.Value.Name.Should().Be(product.Name);
+        result.Value.Description.Should().Be(product.Description);
+        result.Value.Price.Should().Be(product.Price);
 
         _mockRepository.Verify(x => x.GetByIdAsync(product.Id), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_WithNonExistentProductId_ShouldReturnNull()
+    public async Task Handle_WithNonExistentProductId_ShouldReturnError()
     {
         // Arrange
         var nonExistentId = "non-existent-id";
@@ -56,7 +58,8 @@ public class GetProductByIdQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().BeNull();
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.NotFound);
         _mockRepository.Verify(x => x.GetByIdAsync(nonExistentId), Times.Once);
     }
 
@@ -119,10 +122,11 @@ public class SearchProductsQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Products.Should().HaveCount(2);
-        result.TotalCount.Should().Be(totalCount);
-        result.Page.Should().Be(query.Page);
-        result.PageSize.Should().Be(query.PageSize);
+        result.IsError.Should().BeFalse();
+        result.Value.Products.Should().HaveCount(2);
+        result.Value.TotalCount.Should().Be(totalCount);
+        result.Value.Page.Should().Be(query.Page);
+        result.Value.PageSize.Should().Be(query.PageSize);
 
         _mockRepository.Verify(x => x.SearchAsync(
             query.SearchTerm,
@@ -164,10 +168,11 @@ public class SearchProductsQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Products.Should().BeEmpty();
-        result.TotalCount.Should().Be(0);
-        result.Page.Should().Be(query.Page);
-        result.PageSize.Should().Be(query.PageSize);
+        result.IsError.Should().BeFalse();
+        result.Value.Products.Should().BeEmpty();
+        result.Value.TotalCount.Should().Be(0);
+        result.Value.Page.Should().Be(query.Page);
+        result.Value.PageSize.Should().Be(query.PageSize);
     }
 
     private static Product CreateTestProduct(string name, string category)

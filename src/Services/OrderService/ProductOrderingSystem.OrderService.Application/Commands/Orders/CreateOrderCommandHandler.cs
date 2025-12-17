@@ -1,6 +1,7 @@
 using ErrorOr;
 using MassTransit;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.OrderService.Domain.Entities;
 using ProductOrderingSystem.OrderService.Domain.Repositories;
 using ProductOrderingSystem.Shared.Contracts.Events;
@@ -12,15 +13,18 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Err
     private readonly IOrderRepository _orderRepository;
     private readonly IProductCacheRepository _productCacheRepository;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ILogger<CreateOrderCommandHandler> _logger;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
         IProductCacheRepository productCacheRepository,
-        IPublishEndpoint publishEndpoint)
+        IPublishEndpoint publishEndpoint,
+        ILogger<CreateOrderCommandHandler> logger)
     {
         _orderRepository = orderRepository;
         _productCacheRepository = productCacheRepository;
         _publishEndpoint = publishEndpoint;
+        _logger = logger;
     }
 
     public async Task<ErrorOr<Order>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -53,6 +57,11 @@ public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Err
             var cachedProduct = await _productCacheRepository.GetByIdAsync(item.ProductId, cancellationToken);
             if (cachedProduct == null)
             {
+                _logger.LogWarning(
+                    "Product {ProductId} not found in cache when creating order for customer {CustomerId}",
+                    item.ProductId,
+                    request.CustomerId);
+                
                 return Error.NotFound(
                     "OrderItem.Product",
                     $"Product {item.ProductId} not found in product catalog");

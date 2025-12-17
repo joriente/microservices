@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using ProductOrderingSystem.IdentityService.Application.Handlers.Auth;
 using ProductOrderingSystem.IdentityService.Domain.Repositories;
 using ProductOrderingSystem.IdentityService.Domain.Services;
@@ -18,6 +19,11 @@ builder.AddServiceDefaults();
 
 // Add MongoDB
 builder.AddMongoDBClient("identitydb");
+builder.Services.AddSingleton<IMongoDatabase>(sp =>
+{
+    var client = sp.GetRequiredService<IMongoClient>();
+    return client.GetDatabase("identitydb");
+});
 
 // Add services to the container
 builder.Services.AddOpenApi();

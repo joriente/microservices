@@ -7,7 +7,40 @@ tags:
 ---
 # 30-45 Minute Microservices Architecture Demo Agenda
 
-## Part 0: Development Environment Setup (5-7 minutes)
+## Part 0: Git Workflows & Security (10 minutes)
+
+### GitHub Repository Setup
+Walk through the repository structure and collaboration workflows:
+
+**Branching Strategy:**
+- `main` - Production-ready code
+- `develop` - Integration branch
+- Feature branches: `feature/analytics-service`, `feature/notification-service`
+- Demonstrate pull request workflow
+
+### GitHub CodeQL Security Scanning
+Show how to enable and use CodeQL for automated security analysis:
+
+**Enable CodeQL:**
+1. Navigate to repository **Settings** → **Security** → **Code security and analysis**
+2. Enable **CodeQL analysis**
+3. Configure for C#, Java, and JavaScript
+
+**CodeQL Features Demonstration:**
+- Show security alerts in **Security** tab
+- Review detected vulnerabilities (SQL injection, XSS, insecure dependencies)
+- Demonstrate how to fix flagged issues
+- Show security trends over time
+
+**Key Benefits:**
+- Automated security scanning on every push/PR
+- Identifies vulnerabilities before production
+- Supports multiple languages (C#, Java, JavaScript in our stack)
+- Integration with GitHub Advanced Security
+
+**Demo Tip:** Show a recent CodeQL alert and walk through the remediation process. Point out how it integrates into the PR workflow.
+
+## Part 1: Development Environment Setup (5 minutes)
 
 ### VS Code Setup & Extensions
 Walk through the recommended development environment:
@@ -55,23 +88,30 @@ Walk through the recommended development environment:
 
 **Demo Tip:** Show VS Code extensions panel and highlight that all extensions can be installed from the [vscode-extension.list](../vscode-extension.list) file for team consistency.
 
-## Part 1: Architecture Overview (5-7 minutes)
+## Part 2: Architecture Overview (15 minutes)
 
 ### Visual Tour of Solution Structure
 - **Show the solution in VS Code** - Highlight the clean separation:
-  - `src/Services/` - 8 independent microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity, Analytics, Notification)
+  - `src/Services/` - 9 independent microservices (Product, Order, Cart, Customer, Inventory, Payment, Identity, Analytics, Notification)
   - `src/Gateway/` - API Gateway (Yarp reverse proxy)
   - `frontend/` - Blazor WebAssembly UI
   - `src/Aspire/` - Orchestration layer
   - `src/Shared/` - Shared contracts (events only)
 
 ### Key Architecture Principles
-- **Microservices Independence**: Each service has its own database (OrderService→MongoDB, InventoryService→PostgreSQL, ProductService→MongoDB, CartService→MongoDB, AnalyticsService→MongoDB)
-- **Domain-Driven Design**: Clean Architecture with Domain/Application/Infrastructure layers where applicable
+- **Microservices Independence**: Each service has its own database
+  - OrderService → MongoDB
+  - InventoryService → PostgreSQL
+  - ProductService → MongoDB
+  - CartService → MongoDB
+  - AnalyticsService → PostgreSQL + Azure Event Hubs + Microsoft Fabric
+  - NotificationService → Java/Spring Boot with RabbitMQ
+- **Domain-Driven Design**: Clean Architecture with Domain/Application/Infrastructure layers
 - **Event-Driven Communication**: RabbitMQ for async messaging between services
 - **API Gateway Pattern**: Single entry point for frontend, routes to backend services
+- **Polyglot Architecture**: .NET microservices + Java NotificationService demonstrating technology flexibility
 
-## Part 2: Live Service Orchestration (5-8 minutes)
+## Part 3: Live Service Orchestration (5-8 minutes)
 
 ### Start the System
 ```powershell
@@ -89,7 +129,7 @@ Walk through the recommended development environment:
 - "If one service crashes, others continue running"
 - "Aspire handles connection strings, service references automatically"
 
-## Part 3: End-to-End User Flow (10-12 minutes)
+## Part 4: End-to-End User Flow (10-12 minutes)
 
 ### Customer Journey
 1. **Browse Products** (ProductService)
@@ -124,7 +164,76 @@ Walk through the recommended development environment:
    - Show order in "Processing" state
    - Refresh to see real-time updates
 
-## Part 4: Event-Driven Architecture Deep Dive (8-10 minutes)
+## Part 5: Analytics Service & Microsoft Fabric Integration (10 minutes)
+
+### Analytics Architecture Overview
+Show the complete analytics pipeline from microservice to cloud:
+
+**Analytics Data Flow:**
+```
+Microservices → RabbitMQ Events → AnalyticsService
+    ↓
+PostgreSQL (Local Operational Analytics)
+    ↓
+Azure Event Hubs (Cloud Analytics)
+    ↓
+Microsoft Fabric Eventstream
+    ↓
+Lakehouse (Bronze → Silver → Gold)
+    ↓
+Power BI Dashboard
+```
+
+### Dual-Write Pattern Demonstration
+1. **Show AnalyticsService consuming events**:
+   - Open Aspire logs → Filter for AnalyticsService
+   - Watch events being consumed: `OrderCreatedEvent`, `PaymentProcessedEvent`, `ProductViewedEvent`
+   
+2. **PostgreSQL Local Storage**:
+   - Open pgAdmin → Show analytics database
+   - Tables: `analytics_events` with all raw events
+   - Quick operational queries for recent activity
+   
+3. **Azure Event Hubs Publishing**:
+   - Show Azure Portal → Event Hubs namespace
+   - Navigate to `analytics-events` Event Hub
+   - Show incoming messages in real-time metrics
+
+### Microsoft Fabric Medallion Architecture
+1. **Bronze Layer** - Raw event ingestion:
+   - Open Fabric workspace → ProductOrderingLakehouse
+   - Show `OrderEvents` table with all raw events from Event Hub
+   - Explain: "This is the source of truth - immutable event log"
+
+2. **Silver Layer** - Curated transformations:
+   - Show Fabric notebook: `silver-transformations`
+   - Explain: "Cleans and separates events by type"
+   - Show curated tables: `orders`, `payments`, `products`, `inventory`
+   
+3. **Gold Layer** - Business analytics:
+   - Show Fabric notebook: `gold-transformations`
+   - Explain: "Pre-aggregated metrics for BI dashboards"
+   - Show analytics tables:
+     - `daily_orders` - Order trends and revenue
+     - `product_performance` - Top products, category analysis
+     - `customer_metrics` - Lifetime value, purchase patterns
+     - `payment_metrics` - Success rates, payment methods
+
+### Power BI Dashboard (Optional)
+- If Power BI is set up, show live dashboard:
+  - Daily revenue trends
+  - Top selling products
+  - Customer analytics
+  - Payment success rates
+- Explain refresh schedule from Fabric pipeline
+
+### Key Points
+- **Dual-Write Benefits**: Local queries (fast) + Cloud analytics (scalable)
+- **Real-Time Pipeline**: Events flow from services → Event Hubs → Fabric in < 1 second
+- **Batch Transformations**: Silver/Gold layers updated every 15 min to 1 hour
+- **No Impact on Transactions**: Analytics runs independently, doesn't slow down order processing
+8
+## Part 6: Event-Driven Architecture Deep Dive (8-10 minutes)
 
 ### RabbitMQ Management Console
 - Open RabbitMQ Management (from Aspire dashboard)
@@ -211,7 +320,7 @@ Walk through the recommended development environment:
 - "Services communicate only through APIs and events"
 - "Choose the right database for each service's needs"
 
-## Part 7: Scaling & Deployment Discussion (2-3 minutes)
+## Part 9: Scaling & Deployment Discussion (2-3 minutes)
 
 ### Explain Scalability
 - "Each service can scale independently"
@@ -236,21 +345,21 @@ Walk through the recommended development environment:
 - Product management with stock sync
 - Order management and status updates
 
-### Analytics Service Deep Dive
-- **Real-Time Metrics Dashboard**:
-  - Show product view tracking - which products are most viewed
-  - Display sales analytics - revenue by product, conversion rates
-  - Cart abandonment analysis - identify potential lost sales
+### Fabric Data Pipeline Orchestration
+- **Show Fabric Data Pipeline** (if configured):
+  - Open pipeline: `Analytics-ETL-Pipeline`
+  - Show activities: Silver-Transformations → Gold-Transformations
+  - Explain schedule: Hourly or every 15 minutes
+  - Monitor pipeline runs and execution history
   
-- **Event-Driven Analytics Pattern**:
-  - Explain: "AnalyticsService subscribes to all business events"
-  - Show MongoDB collections: `order_metrics`, `product_views`, `cart_events`
-  - Demonstrate how analytics don't slow down transactional services
+- **Incremental Processing**:
+  - Explain how notebooks process only new events since last run
+  - Show execution time: < 5 minutes for typical loads
   
-- **Future Enhancements**:
-  - Integration with Microsoft Fabric for advanced analytics
-  - Machine learning models for product recommendations
-  - Customer segmentation and behavior analysis
+- **Cost vs. Latency Tradeoffs**:
+  - 15-min refresh: Near real-time, higher cost
+  - Hourly refresh: Good balance for most BI use cases
+  - Daily batch: Lowest cost, overnight processing
 
 ### Polyglot Microservices
 - **NotificationService (Java + Spring Boot)**:
@@ -259,11 +368,15 @@ Walk through the recommended development environment:
   - Email notifications using SendGrid API
 
 ### Recent Improvements
-- "Added AnalyticsService for real-time business intelligence"
+- "Integrated Microsoft Fabric with medallion architecture (Bronze/Silver/Gold layers)"
+- "Added real-time analytics pipeline: Event Hubs → Fabric → Power BI"
+- "Implemented dual-write pattern: PostgreSQL (operational) + Event Hubs (analytical)"
+- "Created PySpark notebooks for data transformations"
+- "Set up Fabric Data Pipeline for automated ETL orchestration"
 - "Implemented Java NotificationService demonstrating polyglot architecture"
+- "Enabled GitHub CodeQL for automated security scanning"
 - "All event naming standardized with 'Event' suffix"
 - "Centralized logging and telemetry through Aspire Dashboard"
-- "Set up log4brains for Architecture Decision Records (ADRs)"
 
 ---
 

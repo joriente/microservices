@@ -48,14 +48,23 @@ public class NotificationService {
                 htmlContent
             );
             
-            notificationRepository.save(notification);
+            try {
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to save notification record to database: {}", dbEx.getMessage());
+                // Continue anyway - email is more important than record
+            }
             
             // Send email
             emailService.sendEmail(recipient, subject, htmlContent);
             
             // Mark as sent
-            notification.markAsSent();
-            notificationRepository.save(notification);
+            try {
+                notification.markAsSent();
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to update notification status: {}", dbEx.getMessage());
+            }
             
             log.info("Successfully sent order confirmation email for Order: {}", event.getOrderId());
             
@@ -90,11 +99,20 @@ public class NotificationService {
                 htmlContent
             );
             
-            notificationRepository.save(notification);
+            try {
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to save notification record to database: {}", dbEx.getMessage());
+            }
+            
             emailService.sendEmail(recipient, subject, htmlContent);
             
-            notification.markAsSent();
-            notificationRepository.save(notification);
+            try {
+                notification.markAsSent();
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to update notification status: {}", dbEx.getMessage());
+            }
             
             log.info("Successfully sent payment success email for Order: {}", event.getOrderId());
             
@@ -128,11 +146,20 @@ public class NotificationService {
                 htmlContent
             );
             
-            notificationRepository.save(notification);
+            try {
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to save notification record to database: {}", dbEx.getMessage());
+            }
+            
             emailService.sendEmail(recipient, subject, htmlContent);
             
-            notification.markAsSent();
-            notificationRepository.save(notification);
+            try {
+                notification.markAsSent();
+                notificationRepository.save(notification);
+            } catch (Exception dbEx) {
+                log.warn("Failed to update notification status: {}", dbEx.getMessage());
+            }
             
             log.info("Successfully sent payment failed email for Order: {}", event.getOrderId());
             

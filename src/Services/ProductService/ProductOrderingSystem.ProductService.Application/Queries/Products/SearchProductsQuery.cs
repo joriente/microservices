@@ -1,3 +1,4 @@
+using ErrorOr;
 using MediatR;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
@@ -11,7 +12,7 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
         decimal? MaxPrice,
         int Page = 1,
         int PageSize = 10
-    ) : IRequest<SearchProductsResult>;
+    ) : IRequest<ErrorOr<SearchProductsResult>>;
 
     public record SearchProductsResult(
         IEnumerable<Product> Products,
@@ -20,7 +21,7 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
         int PageSize
     );
 
-    public class SearchProductsQueryHandler : IRequestHandler<SearchProductsQuery, SearchProductsResult>
+    public class SearchProductsQueryHandler : IRequestHandler<SearchProductsQuery, ErrorOr<SearchProductsResult>>
     {
         private readonly IProductRepository _productRepository;
 
@@ -29,7 +30,7 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
             _productRepository = productRepository;
         }
 
-        public async Task<SearchProductsResult> Handle(SearchProductsQuery request, CancellationToken cancellationToken)
+        public async Task<ErrorOr<SearchProductsResult>> Handle(SearchProductsQuery request, CancellationToken cancellationToken)
         {
             var (products, totalCount) = await _productRepository.SearchAsync(
                 request.SearchTerm,

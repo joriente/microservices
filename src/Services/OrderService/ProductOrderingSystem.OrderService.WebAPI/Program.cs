@@ -71,13 +71,21 @@ builder.Services.AddMassTransit(x =>
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         var uri = new Uri(connectionString ?? "amqp://localhost:5672");
         
-        cfg.Host(uri, h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        // Aspire connection string includes credentials in URI format: amqp://user:pass@host:port
+        // Use Uri directly without overriding credentials
+        cfg.Host(uri);
 
-        cfg.ConfigureEndpoints(context);
+        // Limit concurrent message processing to prevent overwhelming MongoDB
+        cfg.UseConcurrencyLimit(5);
+        
+        // Limit prefetch count - fetch 20 messages at a time from RabbitMQ
+        cfg.PrefetchCount = 20;
+        
+        // Configure retry policy for transient failures (like MongoDB connection delays)
+        cfg.UseMessageRetry(r => r.Intervals(500, 1000, 2000, 5000, 10000));
+
+        // Use custom endpoint name formatter to create unique queues per service
+        cfg.ConfigureEndpoints(context, new DefaultEndpointNameFormatter("order-service", false));
     });
 });
 

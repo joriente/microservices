@@ -25,16 +25,13 @@ builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(ProcessPaymentCommandHandler).Assembly);
 });
 
-// Configure MongoDB settings
-builder.Services.Configure<MongoDbSettings>(
-    builder.Configuration.GetSection("MongoDb"));
-
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 // Configure Stripe settings
 builder.Services.Configure<StripeSettings>(
     builder.Configuration.GetSection("Stripe"));
 
+// Use real Stripe service (keys from user secrets)
 builder.Services.AddScoped<IStripePaymentService, StripePaymentService>();
 
 // Configure MassTransit with Azure Service Bus
@@ -48,13 +45,17 @@ builder.Services.AddMassTransit(x =>
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         var uri = new Uri(connectionString ?? "amqp://localhost:5672");
         
-        cfg.Host(uri, h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        // Aspire connection string includes credentials in URI format: amqp://user:pass@host:port
+        // Use Uri directly without overriding credentials
+        cfg.Host(uri);
 
-        cfg.ConfigureEndpoints(context);
+        // Configure concurrency and retry policies
+        cfg.UseConcurrencyLimit(5);
+        cfg.PrefetchCount = 20;
+        cfg.UseMessageRetry(r => r.Intervals(500, 1000, 2000, 5000, 10000));
+
+        // Use custom endpoint name formatter to create unique queues per service
+        cfg.ConfigureEndpoints(context, new DefaultEndpointNameFormatter("payment-service", false));
     });
 });
 

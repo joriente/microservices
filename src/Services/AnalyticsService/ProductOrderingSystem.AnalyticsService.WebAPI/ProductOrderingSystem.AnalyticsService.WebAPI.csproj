@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>analytics-service-secrets-2025</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Aspire -->
+    <ProjectReference Include="..\..\..\Aspire\ProductOrderingSystem.ServiceDefaults\ProductOrderingSystem.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ProductOrderingSystem.AnalyticsService.Infrastructure\ProductOrderingSystem.AnalyticsService.Infrastructure.csproj" />
+    <ProjectReference Include="..\ProductOrderingSystem.AnalyticsService.Application\ProductOrderingSystem.AnalyticsService.Application.csproj" />
+    
+    <!-- Aspire PostgreSQL with EF Core -->
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    
+    <!-- MediatR -->
+    <PackageReference Include="MediatR" />
+    
+    <!-- MassTransit for RabbitMQ -->
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+  </ItemGroup>
+
+</Project>

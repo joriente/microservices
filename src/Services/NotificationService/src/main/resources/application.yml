@@ -5,6 +5,7 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://admin:admin123@localhost:27017/notificationdb?authSource=admin}
+      database: notificationdb
   
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}

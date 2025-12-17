@@ -1,3 +1,5 @@
+using MongoDB.Bson.Serialization.Attributes;
+
 namespace ProductOrderingSystem.CartService.Domain.Entities;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace ProductOrderingSystem.CartService.Domain.Entities;
 /// </summary>
 public class ProductCacheEntry
 {
+    [BsonId]
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }

@@ -52,11 +52,9 @@ builder.Services.AddMassTransit(x =>
         var connectionString = builder.Configuration.GetConnectionString("messaging");
         var uri = new Uri(connectionString ?? "amqp://localhost:5672");
         
-        cfg.Host(uri, h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
+        // Aspire connection string includes credentials in URI format: amqp://user:pass@host:port
+        // Use Uri directly without overriding credentials
+        cfg.Host(uri);
 
         cfg.ConfigureEndpoints(context);
     });

@@ -75,11 +75,15 @@ public class ProductSeeder
         if (publishEvents)
         {
             _logger.LogInformation("Publishing ProductCreatedEvent messages...");
+            _logger.LogInformation("Waiting 5 seconds for consumers to fully initialize MongoDB connections...");
+            await Task.Delay(5000); // Give consumers time to warm up MongoDB connections
             
             foreach (var product in products)
             {
                 try
                 {
+                    _logger.LogInformation("[PUBLISH START] Product {ProductId} ({Name})", product.Id, product.Name);
+                    
                     var @event = new ProductCreatedEvent(
                         ProductId: product.Id,
                         Name: product.Name,
@@ -90,6 +94,12 @@ public class ProductSeeder
 
                     await _eventPublisher.PublishAsync(@event);
                     publishedEvents++;
+                    
+                    _logger.LogInformation("[PUBLISH SUCCESS] Product {ProductId} - Total: {Count}/{Total}", 
+                        product.Id, publishedEvents, productCount);
+                    
+                    // Small delay between events to prevent overwhelming consumers
+                    await Task.Delay(200);
 
                     // Log progress
                     if (publishedEvents % 10 == 0 || publishedEvents == productCount)
@@ -99,7 +109,7 @@ public class ProductSeeder
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to publish event for product {ProductId}. Continuing...", product.Id);
+                    _logger.LogError(ex, "[PUBLISH FAILED] Product {ProductId} - {Message}", product.Id, ex.Message);
                 }
             }
 
@@ -271,6 +281,74 @@ public class ProductSeeder
         // Each product gets a unique image based on a seed number
         var seed = faker.Random.Number(1, 1000);
         return $"https://picsum.photos/seed/{category.ToLower().Replace(" ", "")}{seed}/400/300";
+    }
+
+    public async Task ResyncCacheAsync()
+    {
+        var publishEvents = _configuration.GetValue<bool>("Seeding:Services:ProductService:PublishEvents", true);
+        if (!publishEvents)
+        {
+            _logger.LogInformation("Event publishing is disabled. Skipping cache resync.");
+            return;
+        }
+
+        // Connect to MongoDB to retrieve all existing products
+        var mongoConnectionString = _configuration.GetConnectionString("MongoDB");
+        var databaseName = _configuration.GetValue<string>("MongoDB:ProductDatabaseName", "productdb");
+        var mongoClient = new MongoClient(mongoConnectionString);
+        var database = mongoClient.GetDatabase(databaseName);
+        var collection = database.GetCollection<ProductDocument>("products");
+
+        var products = await collection.Find(FilterDefinition<ProductDocument>.Empty).ToListAsync();
+        
+        if (products.Count == 0)
+        {
+            _logger.LogWarning("No products found to resync");
+            return;
+        }
+
+        _logger.LogInformation("Republishing ProductCreatedEvent for {Count} existing products...", products.Count);
+        
+        var publishedEvents = 0;
+        var publishedIds = new HashSet<string>();
+        
+        foreach (var product in products)
+        {
+            // Skip duplicates
+            if (!publishedIds.Add(product.Id))
+            {
+                _logger.LogWarning("Skipping duplicate product ID: {ProductId}", product.Id);
+                continue;
+            }
+            
+            try
+            {
+                var @event = new ProductCreatedEvent(
+                    ProductId: product.Id,
+                    Name: product.Name,
+                    Price: product.Price,
+                    StockQuantity: product.StockQuantity,
+                    CreatedAt: product.CreatedAt
+                );
+
+                await _eventPublisher.PublishAsync(@event);
+                
+                publishedEvents++;
+
+                // Log progress every 20 products
+                if (publishedEvents % 20 == 0 || publishedEvents == products.Count)
+                {
+                    _logger.LogInformation("Published {Current}/{Total} events...", publishedEvents, products.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish ProductCreatedEvent for product {ProductId} after retries", product.Id);
+            }
+        }
+
+        _logger.LogInformation("✓ Cache resync completed: {Published}/{Total} events published", 
+            publishedEvents, products.Count);
     }
 }
 

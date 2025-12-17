@@ -27,13 +27,11 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
     {
         var message = context.Message;
         
-        // Log the incoming message type for debugging exchange binding issues
-        Console.WriteLine($"[ProductCreatedEventConsumer] RECEIVED ProductCreatedEvent! ProductId={message.ProductId}, Name={message.Name}");
-        
         _logger.LogInformation(
-            "Received ProductCreatedEvent for Product {ProductId} ({ProductName})",
+            "[CONSUMER START] Product {ProductId} ({ProductName}) - Attempt {Attempt}",
             message.ProductId,
-            message.Name);
+            message.Name,
+            context.GetRetryAttempt());
 
         try
         {
@@ -42,27 +40,29 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
                 Id = message.ProductId,
                 Name = message.Name,
                 Price = message.Price,
-                Category = string.Empty, // Not available in ProductCreatedEvent
+                Category = string.Empty,
                 IsActive = true,
                 CreatedAt = message.CreatedAt,
                 LastUpdated = DateTime.UtcNow
             };
 
+            _logger.LogInformation("[UPSERT START] Product {ProductId}", message.ProductId);
             await _productCacheRepository.UpsertAsync(cacheEntry, context.CancellationToken);
+            _logger.LogInformation("[UPSERT SUCCESS] Product {ProductId}", message.ProductId);
 
             _logger.LogInformation(
-                "Successfully cached Product {ProductId} ({ProductName}) with Price {Price:C}",
+                "[CONSUMER SUCCESS] ✓ Cached Product {ProductId} ({ProductName}) with Price {Price:C}",
                 message.ProductId,
                 message.Name,
                 message.Price);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error caching Product {ProductId} from ProductCreatedEvent",
-                message.ProductId);
-            throw; // Let MassTransit handle retry
+            _logger.LogError(ex,
+                "[CONSUMER FAILED] ✗ Product {ProductId} - Exception: {Message}",
+                message.ProductId,
+                ex.Message);
+            throw;
         }
     }
 }

@@ -28,9 +28,10 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
         var message = context.Message;
         
         _logger.LogInformation(
-            "Received ProductCreatedEvent for Product {ProductId} ({ProductName})",
+            "[CONSUMER START] Product {ProductId} ({ProductName}) - Attempt {Attempt}",
             message.ProductId,
-            message.Name);
+            message.Name,
+            context.GetRetryAttempt());
 
         try
         {
@@ -45,7 +46,9 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
                 LastUpdated = DateTime.UtcNow
             };
 
+            _logger.LogInformation("[UPSERT START] Product {ProductId}", message.ProductId);
             await _productCacheRepository.UpsertAsync(cacheEntry, context.CancellationToken);
+            _logger.LogInformation("[UPSERT SUCCESS] Product {ProductId}", message.ProductId);
 
             _logger.LogInformation(
                 "Successfully cached Product {ProductId} ({ProductName}) with Price {Price:C}",
@@ -55,11 +58,11 @@ public class ProductCreatedEventConsumer : IConsumer<ProductCreatedEvent>
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error caching Product {ProductId} from ProductCreatedEvent",
-                message.ProductId);
-            throw; // Let MassTransit handle retry
+            _logger.LogError(ex,
+                "Error caching Product {ProductId} - Exception: {Message}",
+                message.ProductId,
+                ex.Message);
+            throw;
         }
     }
 }
