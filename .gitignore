@@ -460,3 +460,4 @@ appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
 .fake
+docs/.obsidian/workspace.json
