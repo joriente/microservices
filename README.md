@@ -78,6 +78,7 @@ This automated script handles everything:
 - Container health checks and readiness waiting
 - Service startup sequencing
 - Environment variable configuration for cross-platform messaging
+- AnalyticsService with local PostgreSQL (cloud Event Hub integration is optional)
 
 ### 6️⃣ Access the System
 
@@ -92,6 +93,11 @@ This automated script handles everything:
 
 **API Documentation:**
 - Each service has Scalar docs at `/scalar/v1` endpoint
+
+**Analytics & Business Intelligence:**
+- 📈 **AnalyticsService API**: Available via Aspire dashboard (real-time metrics, dashboards)
+- ☁️ **Microsoft Fabric**: Integration for cloud analytics (requires Azure setup - see [Analytics docs](docs/Analytics/))
+- 📊 **Power BI**: Interactive dashboards (requires Fabric integration)
 
 ### 6.5️⃣ Seed Demo Data (Optional)
 
@@ -138,14 +144,19 @@ See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) fo
    - OrderService updates status
 5. **View Order Status** - See order in "Processing" state
 6. **Admin Panel** - Login as `admin` to manage products, inventory, orders
+Analytics:**
+- AnalyticsService automatically captures all events (orders, payments, products, inventory)
+- Local analytics queries available via AnalyticsService API
+- For cloud BI dashboards with Power BI, see [Analytics Setup](#-analytics--business-intelligence-optional)
 
+**View 
 **View Event Flow:**
 - Open RabbitMQ Management → See events published/consumed
 - Open Aspire Dashboard → Search logs by OrderId to trace full order journey
 
 ## 🏗️ Architecture Overview
 
-### Microservices (8 Total)
+### Microservices (9 Total)
 
 | Service | Database | Language | Purpose |
 |---------|----------|----------|---------|
@@ -157,6 +168,8 @@ See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) fo
 | **PaymentService** | MongoDB | .NET 9 | Payment processing (Stripe integration) |
 | **IdentityService** | MongoDB | .NET 9 | Authentication, JWT tokens |
 | **NotificationService** | MongoDB | Java 21 + Spring Boot 3.4 | Email notifications via SendGrid, event-driven with RabbitMQ |
+| **AnalyticsService** | PostgreSQL + MongoDB | .NET 9 | Real-time analytics, Azure Event Hub integration, Microsoft Fabric & Power BI dashboards |
+| **AnalyticsService** | PostgreSQL + MongoDB | .NET 9 | Real-time analytics, Azure Event Hub integration, Microsoft Fabric & Power BI dashboards |
 
 ### Supporting Components
 - **API Gateway** (Yarp) - Single entry point, routing, authentication
@@ -169,7 +182,7 @@ See [DataSeeder README](src/Tools/ProductOrderingSystem.DataSeeder/README.md) fo
 ```
 microservices/
 ├── src/
-│   ├── Services/                    # 8 Independent Microservices
+│   ├── Services/                    # 9 Independent Microservices
 │   │   ├── ProductService/          # Clean Architecture with Domain/Application/Infrastructure/WebAPI
 │   │   ├── OrderService/            # CQRS pattern, MongoDB
 │   │   ├── CartService/             # MongoDB, session-based carts
@@ -177,7 +190,8 @@ microservices/
 │   │   ├── InventoryService/        # PostgreSQL with EF Core, stock tracking
 │   │   ├── PaymentService/          # Stripe integration, MongoDB, event publishing
 │   │   ├── IdentityService/         # JWT authentication, MongoDB
-│   │   └── NotificationService/     # Java 21 + Spring Boot 3.4, SendGrid email, RabbitMQ consumers
+│   │   ├── NotificationService/     # Java 21 + Spring Boot 3.4, SendGrid email, RabbitMQ consumers
+│   │   └── AnalyticsService/        # Real-time analytics, Azure Event Hub, Microsoft Fabric integration
 │   ├── Gateway/
 │   │   └── ApiGateway/              # Yarp reverse proxy, JWT validation
 │   ├── Shared/
@@ -197,6 +211,14 @@ microservices/
 ```
 
 ## 🚀 Key Features
+
+### Real-Time Analytics & Business Intelligence
+- **Event Stream Processing** - Captures all domain events (orders, payments, products, inventory) in real-time
+- **Dual-Write Pattern** - Local PostgreSQL for operational analytics + Azure Event Hubs for cloud analytics
+- **Microsoft Fabric Integration** - Streams events to Fabric Eventstream → Lakehouse → Power BI
+- **Medallion Architecture** - Bronze (raw) → Silver (curated) → Gold (analytics-ready) data layers
+- **Local & Cloud Analytics** - PostgreSQL for fast queries during development, Azure Data Lake for production-scale BI
+- **Comprehensive Documentation** - Full setup guides in [docs/Analytics/](docs/Analytics/) directory
 
 ### Event-Driven Architecture
 - **Async Communication** - Services communicate via RabbitMQ events, not HTTP
@@ -250,9 +272,10 @@ Each service owns its data - no shared databases:
 | **ORM** | Entity Framework Core 9.0, MongoDB Driver (.NET), Spring Data MongoDB (Java) |
 
 ### Architecture Patterns
-- ✅ **Microservices** - 8 independent services with separate databases
+- ✅ **Microservices** - 9 independent services with separate databases
 - ✅ **Polyglot Microservices** - .NET and Java services working together via RabbitMQ
 - ✅ **Event-Driven Architecture** - RabbitMQ for async cross-service communication
+- ✅ **Real-Time Analytics** - Event stream processing with dual-write pattern (local + cloud)
 - ✅ **CQRS** - Command Query Responsibility Segregation with MediatR (.NET)
 - ✅ **Clean Architecture** - Domain/Application/Infrastructure separation
 - ✅ **Database Per Service** - Polyglot persistence (PostgreSQL, MongoDB)
@@ -272,21 +295,56 @@ Each service owns its data - no shared databases:
 ## 📚 Documentation & Learning Resources
 
 ### Getting Started Guides
-- **[Quick Start](docs/QUICKSTART.md)** - Fastest way to run everything
-- **[API Keys Setup](API-KEYS-SETUP.md)** - Configure Stripe test keys
-- **[User Secrets](docs/User-Secrets-Setup.md)** - Secure API key management
-- **[Docker Organization](docs/Docker-Container-Organization.md)** - Container naming conventions
+- **[API Keys Setup](docs/Configuration/API-KEYS-SETUP.md)** - Configure Stripe test keys
+- **[Docker Organization](docs/Architecture/Docker-Container-Organization.md)** - Container naming conventions
+
+## 📊 Analytics & Business Intelligence (Optional)
+
+The AnalyticsService runs automatically with the rest of the system, capturing all events locally in PostgreSQL. For production-grade cloud analytics with Microsoft Fabric and Power BI dashboards, follow these optional setup steps:
+
+### Quick Overview
+- **Local Mode (Default)**: AnalyticsService stores events in PostgreSQL for fast local queries
+- **Cloud Mode (Optional)**: Stream events to Azure Event Hubs → Microsoft Fabric → Power BI dashboards
+
+### Cloud Analytics Setup (Optional)
+
+**Prerequisites:**
+- Azure subscription with Event Hubs and Microsoft Fabric access
+- Event Hub namespace and connection string
+
+**Setup Steps:**
+
+1. **Configure Azure Event Hub** - Follow [Event Hub Integration Guide](docs/Analytics/Analytics-EventHub-Integration.md)
+2. **Set up Microsoft Fabric Eventstream** - See [Fabric Eventstream Setup](docs/Analytics/Fabric-Eventstream-Setup.md)
+3. **Configure Data Pipelines** - Follow [Data Pipeline Orchestration](docs/Analytics/Fabric-Data-Pipeline-Orchestration.md)
+4. **Create Power BI Dashboards** - See [Power BI Dashboard Setup](docs/Analytics/Power-BI-Dashboard-Setup.md)
+
+**Analytics Documentation:**
+- 📖 [Analytics Service Implementation](docs/Analytics/Analytics-Service-Implementation.md) - Complete architecture and setup
+- 📊 [Analytics Architecture Diagrams](docs/Analytics/Analytics-Architecture-Diagrams.md) - Visual data flow diagrams
+- ☁️ [Event Hub Integration](docs/Analytics/Analytics-EventHub-Integration.md) - Azure configuration
+- 🏗️ [Fabric Eventstream Setup](docs/Analytics/Fabric-Eventstream-Setup.md) - Microsoft Fabric setup
+- 🔄 [Data Pipeline Orchestration](docs/Analytics/Fabric-Data-Pipeline-Orchestration.md) - ETL pipelines
+- 📈 [Power BI Dashboard Setup](docs/Analytics/Power-BI-Dashboard-Setup.md) - BI dashboard creation
+
+**What You'll Get:**
+- Real-time order metrics and KPIs
+- Customer behavior analysis
+- Product performance insights
+- Sales trends and forecasting
+- Interactive Power BI dashboards
+
+> 💡 **Note**: The system works fully without cloud analytics. Event Hub integration is only needed for Power BI dashboards and advanced analytics.
 
 ### Architecture Documentation
-- **[Architecture Diagrams](docs/Architecture-Diagrams.md)** - Comprehensive Mermaid diagrams (system architecture, data flow, event-driven patterns)
-- **[Event Naming Conventions](docs/Event-Naming-Conventions.md)** - Standardized event naming
-- **[PostgreSQL Migration](docs/PostgreSQL-Migration-Summary.md)** - InventoryService database migration
-- **[Polyglot Integration](docs/POLYGLOT_INTEGRATION.md)** - .NET and Java service integration
-- **[Messaging Implementation](docs/MESSAGING_IMPLEMENTATION.md)** - RabbitMQ event-driven architecture
-- **[Saga Compensation](docs/SAGA_COMPENSATION_IMPLEMENTATION.md)** - Distributed transaction patterns
-- **[REST API Principles](docs/REST-API-Principles.md)** - API design standards
-- **[Order Queries](docs/ORDER_QUERIES_IMPLEMENTATION.md)** - CQRS query implementation
-- **[CartService RabbitMQ](docs/CartService-RabbitMQ-Integration.md)** - Event consumer patterns
+- **[Architecture Diagrams](docs/Architecture/Architecture-Diagrams.md)** - Comprehensive Mermaid diagrams (system architecture, data flow, event-driven patterns)
+- **[Event Naming Conventions](docs/Messaging/Event-Naming-Conventions.md)** - Standardized event naming
+- **[Polyglot Integration](docs/Services/POLYGLOT_INTEGRATION.md)** - .NET and Java service integration
+- **[Messaging Implementation](docs/Messaging/MESSAGING_IMPLEMENTATION.md)** - RabbitMQ event-driven architecture
+- **[Saga Compensation](docs/Messaging/SAGA_COMPENSATION_IMPLEMENTATION.md)** - Distributed transaction patterns
+- **[REST API Principles](docs/Architecture/REST-API-Principles.md)** - API design standards
+- **[Order Queries](docs/Services/ORDER_QUERIES_IMPLEMENTATION.md)** - CQRS query implementation
+- **[CartService RabbitMQ](docs/Services/CartService-RabbitMQ-Integration.md)** - Event consumer patterns
 
 ### Testing & Development
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing (unit, integration, E2E, polyglot)
@@ -312,6 +370,7 @@ By exploring this project, you'll learn:
 - ✅ Event-driven architecture with RabbitMQ and MassTransit
 - ✅ **Cross-platform messaging** - .NET (MassTransit) ↔ Java (Spring AMQP)
 - ✅ Handling distributed transactions (saga pattern)
+- ✅ **Real-time analytics** - Event stream processing, Azure Event Hubs, Microsoft Fabric
 - ✅ Database-per-service with PostgreSQL and MongoDB
 - ✅ API Gateway patterns with Yarp
 - ✅ Blazor WebAssembly frontend development
@@ -319,6 +378,7 @@ By exploring this project, you'll learn:
 - ✅ Payment integration with Stripe
 - ✅ Email notifications with SendGrid
 - ✅ Clean Architecture and CQRS
+- ✅ **Business Intelligence** - Power BI dashboards with Lakehouse architecture
 - ✅ Containerization and orchestration
 
 ## 🔧 Common Tasks
@@ -541,12 +601,14 @@ docker restart $(docker ps -q)
 
 ## 📝 Recent Updates
 
+- ✅ **AnalyticsService** - New real-time analytics service with Azure Event Hub & Microsoft Fabric integration
 - ✅ **PostgreSQL Migration** - InventoryService migrated from MongoDB to PostgreSQL
 - ✅ **Event Standardization** - All events follow "Event" suffix naming
 - ✅ **Aspire Observability** - Centralized logging and telemetry with Aspire Dashboard
 - ✅ **User Secrets** - API keys moved out of source control
 - ✅ **Blazor UI** - Full frontend with customer and admin features
 - ✅ **Payment Integration** - Stripe test mode with order flow
+- ✅ **Power BI Dashboards** - Business intelligence with Microsoft Fabric Lakehouse
 
 ## 📄 License
 
