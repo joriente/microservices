@@ -102,10 +102,24 @@ jobs:
       with:
         name: build-output
 
+    - name: Set up Docker
+      run: |
+        # Ensure Docker daemon is running
+        docker info
+        # Pull images ahead of time to avoid timeout issues during tests
+        docker pull mongo:8.0
+        docker pull rabbitmq:4.1-management
+        echo "Docker is ready for Testcontainers"
+
     - name: Run Integration Tests with Coverage
       continue-on-error: true
       run: dotnet test --configuration Release --filter "FullyQualifiedName~IntegrationTests" --logger "trx" --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./TestResults/IntegrationTests -- RunConfiguration.TestSessionTimeout=600000
       timeout-minutes: 15
+      env:
+        DOCKER_HOST: unix:///var/run/docker.sock
+        # Testcontainers configuration for CI
+        TESTCONTAINERS_RYUK_DISABLED: false
+        TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
 
     - name: List generated integration test files
       if: success() || failure()
