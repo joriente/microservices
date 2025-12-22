@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,14 +29,29 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
     private const string Issuer = "ProductOrderingSystem";
     private const string Audience = "ProductOrderingSystem.Services";
 
+    public ProductServiceWebApplicationFactory()
+    {
+        // Start containers synchronously before ConfigureWebHost is called
+        _mongoDbContainer.StartAsync().GetAwaiter().GetResult();
+        _rabbitMqContainer.StartAsync().GetAwaiter().GetResult();
+    }
+
+    public async Task InitializeAsync()
+    {
+        // Containers already started in constructor
+        await Task.CompletedTask;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Set environment variable for Wolverine RabbitMQ - must be set before host builds
+        Environment.SetEnvironmentVariable("ConnectionStrings__messaging", _rabbitMqContainer.GetConnectionString());
+        
         builder.ConfigureAppConfiguration((context, config) =>
         {
-            // Add test configuration
+            // Add test configuration with high priority (added last = highest priority)
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:messaging"] = _rabbitMqContainer.GetConnectionString(),
                 ["ConnectionStrings:productdb"] = _mongoDbContainer.GetConnectionString(),
                 ["Jwt:SecretKey"] = SecretKey,
                 ["Jwt:Issuer"] = Issuer,
@@ -44,25 +60,8 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
             });
         });
 
-        builder.ConfigureServices((context, services) =>
+        builder.ConfigureTestServices(services =>
         {
-            // Reconfigure JWT Bearer authentication with test settings
-            services.PostConfigureAll<JwtBearerOptions>(options =>
-            {
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = key,
-                    ValidateIssuer = true,
-                    ValidIssuer = Issuer,
-                    ValidateAudience = true,
-                    ValidAudience = Audience,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
-
             // Replace MongoDB client with test container connection
             services.AddSingleton<IMongoClient>(sp =>
                 new MongoClient(_mongoDbContainer.GetConnectionString()));
@@ -74,6 +73,22 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
                     DatabaseName = "ProductServiceIntegrationTests",
                     ProductsCollectionName = "products"
                 });
+            
+            // Reconfigure JWT Bearer options to use test values
+            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey)),
+                    ValidateIssuer = true,
+                    ValidIssuer = Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
         });
 
         // Disable EventLog logging to prevent disposal issues in tests
@@ -87,12 +102,6 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
         // Use Development environment so health check endpoints are mapped
         builder.UseEnvironment("Development");
         builder.UseSetting("https_port", "");
-    }
-
-    public async Task InitializeAsync()
-    {
-        await _mongoDbContainer.StartAsync();
-        await _rabbitMqContainer.StartAsync();
     }
 
     public new async Task DisposeAsync()

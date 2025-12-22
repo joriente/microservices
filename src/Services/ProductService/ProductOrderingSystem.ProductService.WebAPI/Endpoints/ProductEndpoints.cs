@@ -32,7 +32,7 @@ public static class ProductEndpoints
         productsApi.MapPost("/", CreateProduct)
             .WithName("CreateProduct")
             .WithSummary("Create a new product (returns 201 with Location header)")
-            .AllowAnonymous() // Temporarily allow anonymous access for testing
+            .RequireAuthorization()
             .Produces(201) // 201 Created with Location header, no body
             .Produces(400)
             .Produces(500);
