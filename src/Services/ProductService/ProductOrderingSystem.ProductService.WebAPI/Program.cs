@@ -9,9 +9,11 @@ using ProductOrderingSystem.ProductService.Infrastructure.Persistence;
 using ProductOrderingSystem.ProductService.Infrastructure.Messaging;
 using ProductOrderingSystem.ProductService.WebAPI.Endpoints;
 using ProductOrderingSystem.ProductService.WebAPI.Data;
+using ProductOrderingSystem.ProductService.WebAPI.Middleware;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
-using MassTransit;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,9 +23,30 @@ builder.AddServiceDefaults();
 // Add MongoDB using Aspire client
 builder.AddMongoDBClient("productdb");
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(CreateProductCommand).Assembly);
+// Register global exception handler
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
+{
+    // Configure RabbitMQ transport
+    var connectionString = builder.Configuration.GetConnectionString("messaging");
+    var uri = new Uri(connectionString ?? "amqp://localhost:5672");
+    opts.UseRabbitMq(uri)
+        .AutoProvision(); // Auto-create exchanges and queues
+    
+    // Auto-discover message handlers in the Application assembly
+    opts.Discovery.IncludeAssembly(typeof(CreateProductCommand).Assembly);
+    
+    // Configure message routing
+    opts.PublishAllMessages().ToRabbitExchange("product-events");
+    
+    // Listen to order events
+    opts.ListenToRabbitQueue("product-service-order-events")
+        .ProcessInline(); // Process messages synchronously for now
+
+    opts.Policies.DisableConventionalLocalRouting(); // Simple retry policy for transient failures
 });
 
 // Configure MongoDB settings
@@ -33,32 +56,16 @@ var mongoConfig = new MongoDbConfiguration
     ProductsCollectionName = "products"
 };
 
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing( tracing => tracing.AddSource("Wolverine"));
+
 builder.Services.AddSingleton(mongoConfig);
 builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 // Register database seeder as a background service
 builder.Services.AddHostedService<ProductSeeder>();
-
-// Configure MassTransit with Azure Service Bus
-builder.Services.AddMassTransit(x =>
-{
-    // Add consumers
-    x.AddConsumer<OrderCreatedEventConsumer>();
-    x.AddConsumer<OrderCancelledEventConsumer>();
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        var connectionString = builder.Configuration.GetConnectionString("messaging");
-        var uri = new Uri(connectionString ?? "amqp://localhost:5672");
-        
-        // Aspire connection string includes credentials in URI format: amqp://user:pass@host:port
-        // Use Uri directly without overriding credentials
-        cfg.Host(uri);
-
-        cfg.ConfigureEndpoints(context);
-    });
-});
 
 // Health Checks will be added by Aspire ServiceDefaults
 
@@ -101,6 +108,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Use exception handler middleware
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

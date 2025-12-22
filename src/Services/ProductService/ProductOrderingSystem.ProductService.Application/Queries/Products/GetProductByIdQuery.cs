@@ -1,13 +1,14 @@
-using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
+using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.Queries.Products
 {
-    public record GetProductByIdQuery(string Id) : IRequest<ErrorOr<Product>>;
+    // Wolverine convention: query is just a record, no interface needed
+    public record GetProductByIdQuery(string Id);
 
-    public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, ErrorOr<Product>>
+    // Wolverine convention: handler method name should be Handle or HandleAsync
+    public class GetProductByIdQueryHandler
     {
         private readonly IProductRepository _productRepository;
 
@@ -16,13 +17,13 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
             _productRepository = productRepository;
         }
 
-        public async Task<ErrorOr<Product>> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
+        public async Task<Product> Handle(GetProductByIdQuery query, CancellationToken cancellationToken)
         {
-            var product = await _productRepository.GetByIdAsync(request.Id);
+            var product = await _productRepository.GetByIdAsync(query.Id);
             
             if (product == null)
             {
-                return Error.NotFound("Product.NotFound", $"Product with ID '{request.Id}' was not found");
+                throw new ProductNotFoundException(query.Id);
             }
             
             return product;

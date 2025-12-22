@@ -1,6 +1,6 @@
 # Product Ordering System - Microservices
 
-A production-ready e-commerce microservices application built with .NET 9, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.
+A production-ready e-commerce microservices application built with .NET 10, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.
 
 <div align="center">
 
@@ -17,7 +17,7 @@ A production-ready e-commerce microservices application built with .NET 9, demon
 
 ### 1️⃣ Prerequisites
 Install these before starting:
-- **[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)** 
+- **[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)** 
 - **[Java 21 JDK](https://adoptium.net/)** (for NotificationService - Spring Boot 3.4)
 - **[Apache Maven](https://maven.apache.org/download.cgi)** - Use our automated installer (see step 2.5) OR download manually
 - **[Docker Desktop](https://www.docker.com/products/docker-desktop)** ⚠️ **Must be running before starting services**
@@ -160,18 +160,15 @@ Analytics:**
 
 | Service | Database | Language | Purpose |
 |---------|----------|----------|---------|
-| **ProductService** | MongoDB | .NET 9 | Product catalog, pricing, descriptions |
-| **OrderService** | MongoDB | .NET 9 | Order processing, status tracking |
-| **CartService** | MongoDB | .NET 9 | Shopping cart, session management |
-| **CustomerService** | MongoDB | .NET 9 | Customer profiles, addresses |
-| **InventoryService** | PostgreSQL | .NET 9 | Stock levels, reservations, fulfillment |
-| **PaymentService** | MongoDB | .NET 9 | Payment processing (Stripe integration) |
-| **IdentityService** | MongoDB | .NET 9 | Authentication, JWT tokens |
+| **ProductService** | MongoDB | .NET 10 | Product catalog, pricing, descriptions |
+| **OrderService** | MongoDB | .NET 10 | Order processing, status tracking |
+| **CartService** | MongoDB | .NET 10 | Shopping cart, session management |
+| **CustomerService** | MongoDB | .NET 10 | Customer profiles, addresses |
+| **InventoryService** | PostgreSQL | .NET 10 | Stock levels, reservations, fulfillment |
+| **PaymentService** | MongoDB | .NET 10 | Payment processing (Stripe integration) |
+| **IdentityService** | MongoDB | .NET 10 | Authentication, JWT tokens |
 | **NotificationService** | MongoDB | Java 21 + Spring Boot 3.4 | Email notifications via SendGrid, event-driven with RabbitMQ |
-| **AnalyticsService** | PostgreSQL + MongoDB | .NET 9 | Real-time analytics, Azure Event Hub integration, Microsoft Fabric & Power BI dashboards |
-| **AnalyticsService** | PostgreSQL + MongoDB | .NET 9 | Real-time analytics, Azure Event Hub integration, Microsoft Fabric & Power BI dashboards |
-
-### Supporting Components
+| **AnalyticsService** | PostgreSQL + MongoDB | .NET 10 | Real-time analytics, Azure Event Hub integration, Microsoft Fabric & Power BI dashboards |
 - **API Gateway** (Yarp) - Single entry point, routing, authentication
 - **Blazor WebAssembly** - Modern SPA frontend with MudBlazor UI
 - **RabbitMQ + MassTransit** - Event-driven messaging (cross-platform: .NET ↔ Java)
@@ -260,7 +257,7 @@ Each service owns its data - no shared databases:
 ### Technology Stack
 | Category | Technologies |
 |----------|-------------|
-| **Runtime** | .NET 9.0 (C# 13), Java 21 (Spring Boot 3.4) |
+| **Runtime** | .NET 10.0 (C# 13), Java 21 (Spring Boot 3.4) |
 | **Databases** | PostgreSQL 17, MongoDB 8 |
 | **Messaging** | RabbitMQ 4.0, MassTransit 8.3.5 (.NET), Spring AMQP (Java) |
 | **Frontend** | Blazor WebAssembly, MudBlazor 7.x |
@@ -365,7 +362,7 @@ Browse the codebase to see patterns in action:
 ## 🎓 Learning Outcomes
 
 By exploring this project, you'll learn:
-- ✅ How to build microservices with .NET 9 and Java/Spring Boot
+- ✅ How to build microservices with .NET 10 and Java/Spring Boot
 - ✅ **Polyglot microservices** - Integrating .NET and Java services via messaging
 - ✅ Event-driven architecture with RabbitMQ and MassTransit
 - ✅ **Cross-platform messaging** - .NET (MassTransit) ↔ Java (Spring AMQP)
@@ -516,7 +513,7 @@ Now listening on: http://localhost:17234
 
 **Solution**: 
 1. Check `Directory.Packages.props` for version compatibility
-2. Current packages are on latest stable .NET 9 compatible versions
+2. Current packages are on latest stable .NET 10 compatible versions
 3. Major version updates (MassTransit 9.0, Stripe.net 50.x) may have breaking changes
 4. Stick with current versions unless you need specific new features
 

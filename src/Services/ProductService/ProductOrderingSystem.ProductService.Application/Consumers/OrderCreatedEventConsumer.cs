@@ -1,27 +1,29 @@
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
 using ProductOrderingSystem.Shared.Contracts.Events;
+using Wolverine;
 
 namespace ProductOrderingSystem.ProductService.Application.Consumers;
 
-public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
+// Wolverine convention: handler should have a Handle method that accepts the message
+public class OrderCreatedEventConsumer
 {
     private readonly ILogger<OrderCreatedEventConsumer> _logger;
     private readonly IProductRepository _productRepository;
+    private readonly IMessageBus _messageBus;
 
     public OrderCreatedEventConsumer(
         ILogger<OrderCreatedEventConsumer> logger,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        IMessageBus messageBus)
     {
         _logger = logger;
         _productRepository = productRepository;
+        _messageBus = messageBus;
     }
 
-    public async Task Consume(ConsumeContext<OrderCreatedEvent> context)
+    public async Task Handle(OrderCreatedEvent order)
     {
-        var order = context.Message;
-        
         _logger.LogInformation(
             "Received OrderCreatedEvent for Order {OrderId} with {ItemCount} items. Total: {TotalAmount:C}",
             order.OrderId,
@@ -57,7 +59,6 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                         order.OrderId);
                     
                     await PublishReservationFailureAsync(
-                        context,
                         order.OrderId.ToString(),
                         item.ProductId,
                         $"Product {item.ProductId}",
@@ -78,7 +79,6 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                         order.OrderId);
                     
                     await PublishReservationFailureAsync(
-                        context,
                         order.OrderId.ToString(),
                         item.ProductId,
                         product.Name,
@@ -106,7 +106,7 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                     order.OrderId,
                     product.StockQuantity);
 
-                // Publish ProductReservedEvent
+                // Publish ProductReservedEvent using Wolverine
                 var productReservedEvent = new ProductReservedEvent(
                     OrderId: order.OrderId,
                     ProductId: item.ProductId,
@@ -114,7 +114,7 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                     ReservedAt: DateTime.UtcNow
                 );
 
-                await context.Publish(productReservedEvent);
+                await _messageBus.PublishAsync(productReservedEvent);
                 
                 _logger.LogInformation(
                     "Published ProductReservedEvent for Product {ProductId} in Order {OrderId}",
@@ -134,7 +134,6 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                 
                 var product = await _productRepository.GetByIdAsync(item.ProductId.ToString());
                 await PublishReservationFailureAsync(
-                    context,
                     order.OrderId.ToString(),
                     item.ProductId,
                     product?.Name ?? $"Product {item.ProductId}",
@@ -155,7 +154,6 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                     ex.Message);
                 
                 await PublishReservationFailureAsync(
-                    context,
                     order.OrderId.ToString(),
                     item.ProductId,
                     $"Product {item.ProductId}",
@@ -193,7 +191,6 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
     }
 
     private async Task PublishReservationFailureAsync(
-        ConsumeContext<OrderCreatedEvent> context,
         string orderId,
         Guid productId,
         string productName,
@@ -209,7 +206,7 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
             DateTime.UtcNow
         );
 
-        await context.Publish(failureEvent);
+        await _messageBus.PublishAsync(failureEvent);
         
         _logger.LogWarning(
             "Published ProductReservationFailedEvent for Order {OrderId}, Product {ProductId}: {Reason}",

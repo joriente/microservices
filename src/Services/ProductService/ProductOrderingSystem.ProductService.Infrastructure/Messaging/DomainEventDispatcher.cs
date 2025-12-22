@@ -1,4 +1,4 @@
-using MassTransit;
+using Wolverine;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.ProductService.Domain.Common;
 using DomainEvents = ProductOrderingSystem.ProductService.Domain.Events;
@@ -7,19 +7,19 @@ using IntegrationEvents = ProductOrderingSystem.Shared.Contracts.Events;
 namespace ProductOrderingSystem.ProductService.Infrastructure.Messaging;
 
 /// <summary>
-/// Dispatches domain events from Product entities to RabbitMQ via MassTransit.
+/// Dispatches domain events from Product entities to RabbitMQ via Wolverine.
 /// Converts domain events to integration events for cross-service communication.
 /// </summary>
 public class DomainEventDispatcher
 {
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IMessageBus _messageBus;
     private readonly ILogger<DomainEventDispatcher> _logger;
 
     public DomainEventDispatcher(
-        IPublishEndpoint publishEndpoint,
+        IMessageBus messageBus,
         ILogger<DomainEventDispatcher> logger)
     {
-        _publishEndpoint = publishEndpoint;
+        _messageBus = messageBus;
         _logger = logger;
     }
 
@@ -48,7 +48,7 @@ public class DomainEventDispatcher
                         StockQuantity: productCreated.StockQuantity,
                         CreatedAt: DateTime.UtcNow
                     );
-                    await _publishEndpoint.Publish(createdEvent, cancellationToken);
+                    await _messageBus.PublishAsync(createdEvent);
                     _logger.LogInformation(
                         "Published ProductCreatedEvent for Product {ProductId} ({ProductName})",
                         productCreated.ProductId,
@@ -63,7 +63,7 @@ public class DomainEventDispatcher
                         StockQuantity: productUpdated.StockQuantity,
                         UpdatedAt: DateTime.UtcNow
                     );
-                    await _publishEndpoint.Publish(updatedEvent, cancellationToken);
+                    await _messageBus.PublishAsync(updatedEvent);
                     _logger.LogInformation(
                         "Published ProductUpdatedEvent for Product {ProductId} ({ProductName})",
                         productUpdated.ProductId,

@@ -1431,7 +1431,7 @@ try {
     Write-Host "  • ProductCreatedEvent → Cart Service (cache product)" -ForegroundColor White
     
     Write-Host "`n🌐 Polyglot Architecture Verified:" -ForegroundColor Cyan
-    Write-Host "  • .NET 9 Microservices (C# - Identity, Product, Cart, Order, Payment, Inventory, Customer)" -ForegroundColor White
+    Write-Host "  • .NET 10 Microservices (C# - Identity, Product, Cart, Order, Payment, Inventory, Customer)" -ForegroundColor White
     Write-Host "  • Java 21 Microservice (Spring Boot 3.2.0 - Notification)" -ForegroundColor White
     Write-Host "  • Shared RabbitMQ message bus (MassTransit + Spring AMQP)" -ForegroundColor White
     Write-Host "  • Cross-language event consumption verified" -ForegroundColor White

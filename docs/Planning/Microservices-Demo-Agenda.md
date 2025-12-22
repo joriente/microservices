@@ -47,7 +47,7 @@ Walk through the recommended development environment:
 
 **Essential Tools:**
 - Visual Studio Code (primary IDE)
-- .NET 9 SDK
+- .NET 10 SDK
 - Java 21 JDK (for NotificationService)
 - Apache Maven
 - Docker Desktop
@@ -389,7 +389,7 @@ Power BI Dashboard
 5. **Event Sourcing**: Audit trail of all business events
 6. **Scalability**: Scale services independently based on load
 7. **Team Autonomy**: Different teams can own different services
-8. **Modern Tooling**: .NET 9, Aspire Dashboard, RabbitMQ, Docker
+8. **Modern Tooling**: .NET 10, Aspire Dashboard, RabbitMQ, Docker
 
 ## Demo Tips
 

@@ -166,7 +166,7 @@ The Analytics Service implements a **dual-write pattern** for resilience and fle
 ## Technology Stack
 
 ### Core Services
-- **.NET 9.0**: Service implementation
+- **.NET 10.0**: Service implementation
 - **MassTransit**: Event consumption from RabbitMQ
 - **MongoDB**: Hot data storage for real-time queries
 

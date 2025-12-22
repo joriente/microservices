@@ -14,7 +14,7 @@ tags:
 
 ## Overview
 
-Join us for a live demonstration of a production-ready microservices architecture built with .NET 9, showcasing event-driven communication, independent scaling, and modern cloud-native patterns.
+Join us for a live demonstration of a production-ready microservices architecture built with .NET 10, showcasing event-driven communication, independent scaling, and modern cloud-native patterns.
 
 ## What You'll See
 
@@ -114,7 +114,7 @@ Join us for a live demonstration of a production-ready microservices architectur
 ✅ Architectural decision documentation with ADRs  
 
 ## Technology Stack
-- .NET 9 with C#
+- .NET 10 with C#
 - Java 21 with Spring Boot 3.4 (NotificationService)
 - .NET Aspire for orchestration and observability
 - RabbitMQ (MassTransit for .NET, Spring AMQP for Java)

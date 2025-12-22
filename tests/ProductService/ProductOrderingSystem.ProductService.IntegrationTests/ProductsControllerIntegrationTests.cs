@@ -141,7 +141,7 @@ public class ProductsControllerIntegrationTests : IClassFixture<ProductServiceWe
         products.Should().NotBeEmpty();
         
         // Verify pagination header exists
-        response.Headers.Should().ContainKey("Pagination");
+        response.Headers.Should().ContainKey("X-Pagination");
         
         // Clean up authorization header
         _client.DefaultRequestHeaders.Authorization = null;

@@ -112,7 +112,7 @@ flowchart LR
     end
     
     subgraph ".NET Services"
-        BE1[.NET 9.0]
+        BE1[.NET 10.0]
         BE2[ASP.NET Core]
         BE3[MassTransit]
         BE4[EF Core 9]
