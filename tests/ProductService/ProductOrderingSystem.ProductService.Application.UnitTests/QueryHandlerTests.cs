@@ -1,9 +1,9 @@
 using AwesomeAssertions;
-using ErrorOr;
 using Moq;
 using ProductOrderingSystem.ProductService.Application.Queries.Products;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
+using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.UnitTests;
 
@@ -34,17 +34,16 @@ public class GetProductByIdQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.IsError.Should().BeFalse();
-        result.Value.Id.Should().Be(product.Id);
-        result.Value.Name.Should().Be(product.Name);
-        result.Value.Description.Should().Be(product.Description);
-        result.Value.Price.Should().Be(product.Price);
+        result.Id.Should().Be(product.Id);
+        result.Name.Should().Be(product.Name);
+        result.Description.Should().Be(product.Description);
+        result.Price.Should().Be(product.Price);
 
         _mockRepository.Verify(x => x.GetByIdAsync(product.Id), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_WithNonExistentProductId_ShouldReturnError()
+    public async Task Handle_WithNonExistentProductId_ShouldThrowNotFoundException()
     {
         // Arrange
         var nonExistentId = "non-existent-id";
@@ -54,12 +53,11 @@ public class GetProductByIdQueryHandlerTests
             .Setup(x => x.GetByIdAsync(nonExistentId))
             .ReturnsAsync((Product?)null);
 
-        // Act
-        var result = await _handler.Handle(query, CancellationToken.None);
-
-        // Assert
-        result.IsError.Should().BeTrue();
-        result.FirstError.Type.Should().Be(ErrorType.NotFound);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ProductNotFoundException>(
+            () => _handler.Handle(query, CancellationToken.None));
+        
+        exception.ProductId.Should().Be(nonExistentId);
         _mockRepository.Verify(x => x.GetByIdAsync(nonExistentId), Times.Once);
     }
 
@@ -122,11 +120,10 @@ public class SearchProductsQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.IsError.Should().BeFalse();
-        result.Value.Products.Should().HaveCount(2);
-        result.Value.TotalCount.Should().Be(totalCount);
-        result.Value.Page.Should().Be(query.Page);
-        result.Value.PageSize.Should().Be(query.PageSize);
+        result.Products.Should().HaveCount(2);
+        result.TotalCount.Should().Be(totalCount);
+        result.Page.Should().Be(query.Page);
+        result.PageSize.Should().Be(query.PageSize);
 
         _mockRepository.Verify(x => x.SearchAsync(
             query.SearchTerm,
@@ -168,11 +165,10 @@ public class SearchProductsQueryHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.IsError.Should().BeFalse();
-        result.Value.Products.Should().BeEmpty();
-        result.Value.TotalCount.Should().Be(0);
-        result.Value.Page.Should().Be(query.Page);
-        result.Value.PageSize.Should().Be(query.PageSize);
+        result.Products.Should().BeEmpty();
+        result.TotalCount.Should().Be(0);
+        result.Page.Should().Be(query.Page);
+        result.PageSize.Should().Be(query.PageSize);
     }
 
     private static Product CreateTestProduct(string name, string category)

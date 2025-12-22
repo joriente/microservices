@@ -20,7 +20,7 @@ This document describes the integration of the **Java-based NotificationService*
 
 | Aspect | .NET Services | Java NotificationService |
 |--------|--------------|-------------------------|
-| **Runtime** | .NET 9.0 | Java 21 |
+| **Runtime** | .NET 10.0 | Java 21 |
 | **Framework** | ASP.NET Core | Spring Boot 3.2.0 |
 | **Database Client** | MongoDB.Driver | Spring Data MongoDB |
 | **Messaging** | MassTransit | Spring AMQP |

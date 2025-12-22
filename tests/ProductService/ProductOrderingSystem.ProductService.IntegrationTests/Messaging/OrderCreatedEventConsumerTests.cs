@@ -1,44 +1,39 @@
-using MassTransit;
-using MassTransit.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using ProductOrderingSystem.ProductService.Application.Consumers;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
 using ProductOrderingSystem.Shared.Contracts.Events;
+using Wolverine;
 using Xunit;
 
 namespace ProductOrderingSystem.ProductService.IntegrationTests.Messaging;
 
 /// <summary>
-/// Tests for OrderCreatedEventConsumer using MassTransit In-Memory Test Harness.
-/// Demonstrates testing message consumption without real RabbitMQ.
+/// Tests for OrderCreatedEventConsumer using Wolverine.
+/// Tests the handler directly without requiring a test harness.
 /// </summary>
 public class OrderCreatedEventConsumerTests
 {
     [Fact]
-    public async Task Consumer_Should_Consume_OrderCreatedEvent()
+    public async Task Consumer_Should_Handle_OrderCreatedEvent()
     {
         // Arrange: Set up mock repository
         var mockRepository = new Mock<IProductRepository>();
+        var product = new Product("Test Product", "Description", 10.00m, 100, "Category", "image.jpg");
         mockRepository.Setup(r => r.GetByIdAsync(It.IsAny<string>()))
-            .ReturnsAsync(new Product("Test Product", "Description", 10.00m, 100, "Category", "image.jpg"));
+            .ReturnsAsync(product);
         mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Product>()))
             .ReturnsAsync((Product p) => p);
 
-        // Arrange: Configure test harness with the consumer and dependencies
-        await using var provider = new ServiceCollection()
-            .AddSingleton(mockRepository.Object)
-            .AddSingleton(NullLogger<OrderCreatedEventConsumer>.Instance)
-            .AddMassTransitTestHarness(cfg =>
-            {
-                cfg.AddConsumer<OrderCreatedEventConsumer>();
-            })
-            .BuildServiceProvider(true);
-
-        var harness = provider.GetRequiredService<ITestHarness>();
-        await harness.Start();
+        // Arrange: Set up mock message bus
+        var mockMessageBus = new Mock<IMessageBus>();
+        
+        // Arrange: Create the consumer
+        var consumer = new OrderCreatedEventConsumer(
+            NullLogger<OrderCreatedEventConsumer>.Instance,
+            mockRepository.Object,
+            mockMessageBus.Object);
 
         var orderId = Guid.NewGuid();
         var customerId = Guid.NewGuid();
@@ -60,20 +55,16 @@ public class OrderCreatedEventConsumerTests
         );
 
         // Act
-        await harness.Bus.Publish(orderCreatedEvent);
+        await consumer.Handle(orderCreatedEvent);
 
-        // Assert - Verify the event was consumed
-        Assert.True(await harness.Consumed.Any<OrderCreatedEvent>());
-
-        // Get the consumer harness to verify consumption
-        var consumerHarness = harness.GetConsumerHarness<OrderCreatedEventConsumer>();
-        Assert.True(await consumerHarness.Consumed.Any<OrderCreatedEvent>());
-
-        // Verify the message details
-        var consumedMessage = consumerHarness.Consumed.Select<OrderCreatedEvent>().First();
-        Assert.Equal(orderId, consumedMessage.Context.Message.OrderId);
-        Assert.NotNull(consumedMessage.Context.Message.Items);
-        Assert.Equal(productId, consumedMessage.Context.Message.Items.First().ProductId);
+        // Assert - Verify repository methods were called
+        mockRepository.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.AtLeastOnce);
+        mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Product>()), Times.AtLeastOnce);
+        
+        // Verify a ProductReservedEvent was published
+        mockMessageBus.Verify(
+            m => m.PublishAsync(It.IsAny<ProductReservedEvent>()),
+            Times.Once);
     }
 
     [Fact]
@@ -86,26 +77,21 @@ public class OrderCreatedEventConsumerTests
         mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Product>()))
             .ReturnsAsync((Product p) => p);
 
-        await using var provider = new ServiceCollection()
-            .AddSingleton(mockRepository.Object)
-            .AddSingleton(NullLogger<OrderCreatedEventConsumer>.Instance)
-            .AddMassTransitTestHarness(cfg =>
-            {
-                cfg.AddConsumer<OrderCreatedEventConsumer>();
-            })
-            .BuildServiceProvider(true);
+        var mockMessageBus = new Mock<IMessageBus>();
+        
+        var consumer = new OrderCreatedEventConsumer(
+            NullLogger<OrderCreatedEventConsumer>.Instance,
+            mockRepository.Object,
+            mockMessageBus.Object);
 
-        var harness = provider.GetRequiredService<ITestHarness>();
-        await harness.Start();
-
-        // Act - Publish multiple events
+        // Act - Process multiple events
         var orderIds = new List<Guid>();
         for (int i = 0; i < 5; i++)
         {
             var orderId = Guid.NewGuid();
             orderIds.Add(orderId);
             
-            await harness.Bus.Publish(new OrderCreatedEvent(
+            await consumer.Handle(new OrderCreatedEvent(
                 OrderId: orderId,
                 CustomerId: Guid.NewGuid(),
                 Items: new List<OrderItemDto>
@@ -118,14 +104,12 @@ public class OrderCreatedEventConsumerTests
         }
 
         // Assert
-        var consumerHarness = harness.GetConsumerHarness<OrderCreatedEventConsumer>();
-        
-        // Wait for all messages to be consumed
-        Assert.True(await consumerHarness.Consumed.Any<OrderCreatedEvent>(x => x.Context.Message.OrderId == orderIds[4]));
-        
-        // Verify all 5 were consumed
-        var consumed = consumerHarness.Consumed.Select<OrderCreatedEvent>().ToArray();
-        Assert.Equal(5, consumed.Length);
+        // Verify all 5 events were processed
+        mockRepository.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Exactly(5));
+        mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Product>()), Times.Exactly(5));
+        mockMessageBus.Verify(
+            m => m.PublishAsync(It.IsAny<ProductReservedEvent>()),
+            Times.Exactly(5));
     }
 
     [Fact]
@@ -138,17 +122,12 @@ public class OrderCreatedEventConsumerTests
         mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Product>()))
             .ReturnsAsync((Product p) => p);
 
-        await using var provider = new ServiceCollection()
-            .AddSingleton(mockRepository.Object)
-            .AddSingleton(NullLogger<OrderCreatedEventConsumer>.Instance)
-            .AddMassTransitTestHarness(cfg =>
-            {
-                cfg.AddConsumer<OrderCreatedEventConsumer>();
-            })
-            .BuildServiceProvider(true);
-
-        var harness = provider.GetRequiredService<ITestHarness>();
-        await harness.Start();
+        var mockMessageBus = new Mock<IMessageBus>();
+        
+        var consumer = new OrderCreatedEventConsumer(
+            NullLogger<OrderCreatedEventConsumer>.Instance,
+            mockRepository.Object,
+            mockMessageBus.Object);
 
         var orderEvent = new OrderCreatedEvent(
             OrderId: Guid.NewGuid(),
@@ -164,15 +143,16 @@ public class OrderCreatedEventConsumerTests
         );
 
         // Act
-        await harness.Bus.Publish(orderEvent);
+        await consumer.Handle(orderEvent);
 
         // Assert
-        var consumerHarness = harness.GetConsumerHarness<OrderCreatedEventConsumer>();
-        Assert.True(await consumerHarness.Consumed.Any<OrderCreatedEvent>());
-
-        var consumedEvent = consumerHarness.Consumed.Select<OrderCreatedEvent>().First();
-        Assert.NotNull(consumedEvent.Context.Message.Items);
-        Assert.Equal(3, consumedEvent.Context.Message.Items.Count);
-        Assert.Equal(130m, consumedEvent.Context.Message.TotalAmount);
+        // Should have tried to reserve stock for all 3 items
+        mockRepository.Verify(r => r.GetByIdAsync(It.IsAny<string>()), Times.Exactly(3));
+        mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Product>()), Times.Exactly(3));
+        
+        // Should publish a ProductReservedEvent for each item
+        mockMessageBus.Verify(
+            m => m.PublishAsync(It.IsAny<ProductReservedEvent>()),
+            Times.Exactly(3));
     }
 }

@@ -1,7 +1,7 @@
 {
   "name": "microservices",
   "version": "1.0.0",
-  "description": "A production-ready e-commerce microservices application built with .NET 9, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.",
+  "description": "A production-ready e-commerce microservices application built with .NET 10, demonstrating modern cloud-native patterns including event-driven architecture, CQRS, database-per-service, and distributed transaction management.",
   "main": "index.js",
   "directories": {
     "doc": "docs",

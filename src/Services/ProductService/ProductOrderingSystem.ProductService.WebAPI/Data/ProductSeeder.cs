@@ -1,5 +1,5 @@
 using Bogus;
-using MediatR;
+using Wolverine;
 using ProductOrderingSystem.ProductService.Application.Commands.Products;
 using ProductOrderingSystem.ProductService.Application.Queries.Products;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
@@ -34,11 +34,11 @@ public class ProductSeeder : BackgroundService
         await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
 
         using var scope = _serviceProvider.CreateScope();
-        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var messageBus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
         try
         {
-            await SeedAsync(scope, mediator, stoppingToken);
+            await SeedAsync(scope, messageBus, stoppingToken);
         }
         catch (Exception ex)
         {
@@ -46,7 +46,7 @@ public class ProductSeeder : BackgroundService
         }
     }
 
-    private async Task SeedAsync(IServiceScope scope, IMediator mediator, CancellationToken cancellationToken)
+    private async Task SeedAsync(IServiceScope scope, IMessageBus messageBus, CancellationToken cancellationToken)
     {
         // Retry logic for infrastructure connection
         var maxRetries = 20;
@@ -68,28 +68,21 @@ public class ProductSeeder : BackgroundService
                     PageSize: 1
                 );
                 
-                var searchResult = await mediator.Send(searchQuery, cancellationToken);
-                
-                if (searchResult.IsError)
-                {
-                    _logger.LogError("Error checking existing products: {Errors}", 
-                        string.Join(", ", searchResult.Errors.Select(e => e.Description)));
-                    return;
-                }
+                var searchResult = await messageBus.InvokeAsync<SearchProductsResult>(searchQuery, cancellationToken);
                 
                 var expectedProductCount = _configuration.GetValue<int>("Seeding:ProductCount", 100);
                 
-                if (searchResult.Value.TotalCount >= expectedProductCount)
+                if (searchResult.TotalCount >= expectedProductCount)
                 {
                     _logger.LogInformation("Database already contains {Count} products (expected: {Expected}). Skipping seed.", 
-                        searchResult.Value.TotalCount, expectedProductCount);
+                        searchResult.TotalCount, expectedProductCount);
                     return;
                 }
                 
-                if (searchResult.Value.TotalCount > 0)
+                if (searchResult.TotalCount > 0)
                 {
                     _logger.LogWarning("Database contains {Count} products but expected {Expected}. Clearing existing products and re-seeding...", 
-                        searchResult.Value.TotalCount, expectedProductCount);
+                        searchResult.TotalCount, expectedProductCount);
                     
                     // Get the repository to clear existing products
                     var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
@@ -98,10 +91,10 @@ public class ProductSeeder : BackgroundService
                     {
                         await productRepository.DeleteAsync(product.Id);
                     }
-                    _logger.LogInformation("Cleared {Count} existing products", searchResult.Value.TotalCount);
+                    _logger.LogInformation("Cleared {Count} existing products", searchResult.TotalCount);
                 }
 
-                _logger.LogInformation("Seeding product database with sample data via MediatR commands...");
+                _logger.LogInformation("Seeding product database with sample data via Wolverine commands...");
 
                 var categories = new[]
                 {
@@ -117,7 +110,7 @@ public class ProductSeeder : BackgroundService
 
                 var productData = GenerateProductData(100, categories);
 
-                // Create products using MediatR commands - this will trigger domain events
+                // Create products using Wolverine commands - this will trigger domain events
                 // Use CancellationToken.None to ensure seeding completes even if the application startup cancellation is triggered
                 int successCount = 0;
                 int failureCount = 0;
@@ -135,20 +128,12 @@ public class ProductSeeder : BackgroundService
                         );
 
                         // Don't use the cancellation token here to allow seeding to complete
-                        var result = await mediator.Send(command, CancellationToken.None);
+                        var result = await messageBus.InvokeAsync<ProductOrderingSystem.ProductService.Domain.Entities.Product>(command, CancellationToken.None);
                         
-                        if (!result.IsError)
+                        successCount++;
+                        if (successCount % 10 == 0)
                         {
-                            successCount++;
-                            if (successCount % 10 == 0)
-                            {
-                                _logger.LogInformation("Progress: {SuccessCount}/{TotalCount} products seeded", successCount, productData.Count);
-                            }
-                        }
-                        else
-                        {
-                            failureCount++;
-                            _logger.LogWarning("Failed to seed product {Name}: {Error}", data.Name, result.FirstError.Description);
+                            _logger.LogInformation("Progress: {SuccessCount}/{TotalCount} products seeded", successCount, productData.Count);
                         }
                         
                         // Small delay to avoid overwhelming MongoDB

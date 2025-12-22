@@ -132,7 +132,7 @@ AWS-native data warehouse and data lake solution.
 3. 📡 **Serving Layer**: Fabric serves data to Power BI, APIs, and ML models
 
 ### Technology Stack
-- 🔧 **AnalyticsService**: .NET 9 microservice consuming RabbitMQ events
+- 🔧 **AnalyticsService**: .NET 10 microservice consuming RabbitMQ events
 - 🔥 **Hot Storage**: MongoDB for real-time metrics (last 30-90 days)
 - ❄️ **Cold Storage**: Azure Data Lake Storage Gen2 (Parquet format)
 - ☁️ **Analytics Platform**: Microsoft Fabric (Lakehouse, Data Warehouse, Real-time Hub)

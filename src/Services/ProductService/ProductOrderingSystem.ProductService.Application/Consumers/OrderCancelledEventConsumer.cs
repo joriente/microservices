@@ -1,4 +1,3 @@
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
 using ProductOrderingSystem.Shared.Contracts.Events;
@@ -9,7 +8,8 @@ namespace ProductOrderingSystem.ProductService.Application.Consumers;
 /// Handles order cancellations by restoring reserved stock for all products in the order.
 /// This is the compensation logic for the saga pattern.
 /// </summary>
-public class OrderCancelledEventConsumer : IConsumer<OrderCancelledEvent>
+// Wolverine convention: handler should have a Handle method that accepts the message
+public class OrderCancelledEventConsumer
 {
     private readonly IProductRepository _productRepository;
     private readonly ILogger<OrderCancelledEventConsumer> _logger;
@@ -22,10 +22,8 @@ public class OrderCancelledEventConsumer : IConsumer<OrderCancelledEvent>
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<OrderCancelledEvent> context)
+    public async Task Handle(OrderCancelledEvent message)
     {
-        var message = context.Message;
-        
         _logger.LogInformation(
             "Order {OrderId} cancelled. Restoring stock for {ItemCount} products. Reason: {Reason}",
             message.OrderId,

@@ -1,10 +1,10 @@
-using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
+using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.Commands.Products
 {
+    // Wolverine convention: command is just a record, no interface needed
     public record CreateProductCommand(
         string Name,
         string Description,
@@ -12,9 +12,10 @@ namespace ProductOrderingSystem.ProductService.Application.Commands.Products
         int StockQuantity,
         string Category,
         string ImageUrl
-    ) : IRequest<ErrorOr<Product>>;
+    );
 
-    public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, ErrorOr<Product>>
+    // Wolverine convention: handler method name should be Handle or HandleAsync
+    public class CreateProductCommandHandler
     {
         private readonly IProductRepository _productRepository;
 
@@ -23,36 +24,34 @@ namespace ProductOrderingSystem.ProductService.Application.Commands.Products
             _productRepository = productRepository;
         }
 
-        public async Task<ErrorOr<Product>> Handle(CreateProductCommand request, CancellationToken cancellationToken)
+        public async Task<Product> Handle(CreateProductCommand command, CancellationToken cancellationToken)
         {
-            try
-            {
-                // Validate input
-                if (string.IsNullOrWhiteSpace(request.Name))
-                    return Error.Validation("Product.Name", "Product name is required");
-                
-                if (request.Price <= 0)
-                    return Error.Validation("Product.Price", "Product price must be greater than zero");
-                
-                if (request.StockQuantity < 0)
-                    return Error.Validation("Product.StockQuantity", "Stock quantity cannot be negative");
+            // Validate input - throw exceptions for validation errors
+            var errors = new Dictionary<string, string[]>();
+            
+            if (string.IsNullOrWhiteSpace(command.Name))
+                errors["Name"] = new[] { "Product name is required" };
+            
+            if (command.Price <= 0)
+                errors["Price"] = new[] { "Product price must be greater than zero" };
+            
+            if (command.StockQuantity < 0)
+                errors["StockQuantity"] = new[] { "Stock quantity cannot be negative" };
 
-                var product = new Product(
-                    request.Name,
-                    request.Description,
-                    request.Price,
-                    request.StockQuantity,
-                    request.Category,
-                    request.ImageUrl
-                );
+            if (errors.Any())
+                throw new ProductValidationException(errors);
 
-                var createdProduct = await _productRepository.CreateAsync(product);
-                return createdProduct;
-            }
-            catch (Exception ex)
-            {
-                return Error.Failure("Product.Creation", $"Failed to create product: {ex.Message}");
-            }
+            var product = new Product(
+                command.Name,
+                command.Description,
+                command.Price,
+                command.StockQuantity,
+                command.Category,
+                command.ImageUrl
+            );
+
+            var createdProduct = await _productRepository.CreateAsync(product);
+            return createdProduct;
         }
     }
 }

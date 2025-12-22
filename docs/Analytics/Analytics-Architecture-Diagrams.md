@@ -319,7 +319,7 @@ flowchart TB
 - **External SDKs**: Azure Event Hubs SDK, Npgsql driver
 
 **WebAPI Layer (Entry Point):**
-- **Minimal APIs**: HTTP endpoints using .NET 9 Minimal API pattern
+- **Minimal APIs**: HTTP endpoints using .NET 10 Minimal API pattern
 - **Service Registration**: Dependency injection configuration
 - **Middleware**: Logging, error handling, health checks
 - **API Documentation**: OpenAPI/Swagger integration
