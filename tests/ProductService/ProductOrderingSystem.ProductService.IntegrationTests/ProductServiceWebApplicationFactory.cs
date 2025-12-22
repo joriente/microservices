@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using ProductOrderingSystem.ProductService.Infrastructure.Configuration;
 using Testcontainers.MongoDb;
+using Testcontainers.RabbitMq;
 
 namespace ProductOrderingSystem.ProductService.IntegrationTests;
 
@@ -17,6 +18,10 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
     private readonly MongoDbContainer _mongoDbContainer = new MongoDbBuilder()
         .WithImage("mongo:8.0")
         .WithPortBinding(27017, true)
+        .Build();
+
+    private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
+        .WithImage("rabbitmq:4.1-management")
         .Build();
     
     private const string SecretKey = "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
@@ -30,7 +35,7 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
             // Add test configuration
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:messaging"] = "amqp://guest:guest@localhost:5672",
+                ["ConnectionStrings:messaging"] = _rabbitMqContainer.GetConnectionString(),
                 ["ConnectionStrings:productdb"] = _mongoDbContainer.GetConnectionString(),
                 ["Jwt:SecretKey"] = SecretKey,
                 ["Jwt:Issuer"] = Issuer,
@@ -87,11 +92,13 @@ public class ProductServiceWebApplicationFactory : WebApplicationFactory<Program
     public async Task InitializeAsync()
     {
         await _mongoDbContainer.StartAsync();
+        await _rabbitMqContainer.StartAsync();
     }
 
     public new async Task DisposeAsync()
     {
         await _mongoDbContainer.DisposeAsync();
+        await _rabbitMqContainer.DisposeAsync();
         await base.DisposeAsync();
     }
 }
