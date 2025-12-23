@@ -3,7 +3,7 @@
 ## Overview
 The Inventory Service manages product stock levels, handles inventory reservations for orders, and processes inventory adjustments. It uses a Vertical Slice Architecture pattern with PostgreSQL for data persistence.
 
-**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | FluentValidation
+**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | FluentValidation | Aspire
 
 ## Architecture
 

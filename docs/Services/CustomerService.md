@@ -3,7 +3,7 @@
 ## Overview
 The Customer Service manages customer profiles, addresses, and customer-related information. It synchronizes with the Identity Service and provides customer data to other services in the system.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | FluentValidation | ErrorOr
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | FluentValidation | Aspire
 
 ## Architecture
 
@@ -287,9 +287,9 @@ public enum CustomerStatus
    ```
 
 ### Consumed Events
-1. **UserRegisteredEvent**: Create customer profile from Identity Service
-2. **UserUpdatedEvent**: Sync user information changes
-3. **OrderCompletedEvent**: Update customer order history
+1. **OrderCreatedEvent**: Track customer order history and activity
+
+**Note**: The Customer Service currently consumes OrderCreated events to maintain customer order history. It does not consume UserRegistered events (no integration with Identity Service yet) and does not publish events.
 
 ## Features
 

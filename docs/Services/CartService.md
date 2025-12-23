@@ -3,7 +3,7 @@
 ## Overview
 The Cart Service manages shopping carts for customers, handling cart creation, item management, and integration with product information. It acts as a temporary storage for customer selections before order placement.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Product Cache | Aspire
 
 ## Architecture
 
@@ -230,6 +230,52 @@ stateDiagram-v2
 
 ### .NET Aspire
 - **Aspire ServiceDefaults**: Service configuration standards
+
+## Key Features
+
+### Product Cache Synchronization
+The Cart Service maintains a local cache of product information to ensure cart items have accurate, up-to-date product details without constantly querying the Product Service.
+
+**Cache Update Flow**:
+```mermaid
+sequenceDiagram
+    participant ProductService
+    participant RabbitMQ
+    participant CartService
+    participant ProductCache
+    participant Carts
+    
+    ProductService->>RabbitMQ: ProductCreatedEvent
+    RabbitMQ->>CartService: Consume Event
+    CartService->>ProductCache: Store Product Info
+    
+    ProductService->>RabbitMQ: ProductUpdatedEvent
+    RabbitMQ->>CartService: Consume Event
+    CartService->>ProductCache: Update Product Info
+    CartService->>Carts: Update Existing Cart Items
+    
+    ProductService->>RabbitMQ: ProductDeletedEvent
+    RabbitMQ->>CartService: Consume Event
+    CartService->>ProductCache: Remove Product Info
+    CartService->>Carts: Remove Product from All Carts
+```
+
+**Benefits**:
+- Fast cart operations without external service calls
+- Automatic price and name updates when products change
+- Automatic removal of deleted products from carts
+- Resilience to Product Service downtime
+
+**Event Consumers**:
+- `ProductCreatedEventConsumer`: Adds new products to cache
+- `ProductUpdatedEventConsumer`: Updates product info and cart items
+- `ProductDeletedEventConsumer`: Removes deleted products from all carts
+
+### Cart Clearing on Order Creation
+When an order is created, the cart is automatically cleared:
+- `OrderCreatedEventConsumer`: Listens for order creation events
+- Clears the customer's cart after successful order placement
+- Ensures users start with a fresh cart for next purchase
 
 ## Domain Model
 

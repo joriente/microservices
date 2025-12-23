@@ -3,7 +3,7 @@
 ## Overview
 The Analytics Service collects, processes, and analyzes business metrics from the microservices architecture. It consumes events from all services, aggregates data, and provides insights through dashboards and reports. Integration with Microsoft Fabric enables advanced analytics and data pipelines.
 
-**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | Azure Event Hub | Microsoft Fabric
+**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | Azure Event Hub | Microsoft Fabric | Aspire
 
 ## Architecture
 
@@ -185,21 +185,26 @@ graph TB
 ## Libraries and Packages
 
 ### Core Framework
-- **.NET 10.0**: Latest .NET runtime
-- **ASP.NET Core**: Web API
+- **.NET 9.0**: Latest .NET runtime
+- **ASP.NET Core**: Web API with Minimal APIs
 
 ### Database
-- **Microsoft.EntityFrameworkCore**: ORM framework
-- **Aspire.Npgsql.EntityFrameworkCore.PostgreSQL**: PostgreSQL with Aspire
+- **Microsoft.EntityFrameworkCore**: ORM framework for PostgreSQL
+- **Aspire.Npgsql.EntityFrameworkCore.PostgreSQL**: PostgreSQL with Aspire integration
+- **Npgsql**: PostgreSQL .NET driver
 
 ### CQRS
-- **MediatR**: Query handling
+- **MediatR**: Query handling for analytics requests
 
 ### Messaging
-- **MassTransit**: Event consumption
-- **MassTransit.RabbitMQ**: RabbitMQ transport
-- **Azure.Messaging.EventHubs**: Event Hub producer
-- **Azure.Messaging.EventHubs.Producer**: Event Hub client
+- **MassTransit**: Event consumption from RabbitMQ
+- **MassTransit.RabbitMQ**: RabbitMQ transport for consuming business events
+- **Azure.Messaging.EventHubs**: Event Hub producer for streaming to Fabric
+- **Azure.Messaging.EventHubs.Producer**: Event Hub client for data export
+
+**Messaging Architecture**:
+- **Inbound**: Consumes events from RabbitMQ (OrderCreated, PaymentProcessed, etc.)
+- **Outbound**: Streams processed events to Azure Event Hub for Fabric integration
 
 ### .NET Aspire
 - **Aspire ServiceDefaults**: Service configuration

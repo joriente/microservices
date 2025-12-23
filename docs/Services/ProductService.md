@@ -3,7 +3,7 @@
 ## Overview
 The Product Service is responsible for managing the product catalog in the microservices architecture. It handles product creation, updates, inventory tracking, and provides product information to other services.
 
-**Technology Stack**: .NET 10.0 | MongoDB | Wolverine.NET | RabbitMQ
+**Technology Stack**: .NET 10.0 | MongoDB | Wolverine.NET | RabbitMQ | OpenTelemetry | Aspire
 
 ## Architecture
 
@@ -188,14 +188,27 @@ sequenceDiagram
 - **ASP.NET Core**: Web API framework with Minimal APIs
 
 ### Messaging and CQRS (Wolverine.NET)
-- **Wolverine** (v4.4.0): Unified messaging and CQRS framework
-  - Command/Query handling
+- **Wolverine** (v4.4.0): Next-generation messaging and CQRS framework
+  - Unified command/query handling
   - Message bus for in-process and distributed messaging
   - Built-in validation and error handling
-- **Wolverine.RabbitMQ** (v4.4.0): RabbitMQ integration
-  - Event publishing
-  - Message consumption
+  - Transactional outbox pattern
+  - Saga orchestration capabilities
+- **Wolverine.RabbitMQ** (v4.4.0): RabbitMQ transport integration
+  - Auto-provisioning of exchanges and queues
+  - Event publishing to RabbitMQ
+  - Message consumption from queues
+  - Routing and filtering
 - **Wolverine.Http** (v4.4.0): HTTP integration features
+  - Endpoint generation
+  - Request/response handling
+
+**Why Wolverine?**
+- Modern alternative to MassTransit/MediatR
+- Better performance with source generation
+- Simplified configuration
+- Native async/await support
+- Automatic retry and error handling policies
 
 ### Database
 - **MongoDB.Driver** (v3.5.2): Official MongoDB C# driver
