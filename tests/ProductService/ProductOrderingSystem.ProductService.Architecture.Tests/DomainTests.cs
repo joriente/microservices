@@ -12,20 +12,21 @@ public class DomainModel(ITestOutputHelper output) : TestBase
     [Fact]
     public void DomainModel_ShouldInheritsBaseClasses()
     {
-        // Arrange
-        var domainModels = Types.InAssembly(DomainAssembly)
-            .That()
-            .DoNotResideInNamespaceContaining("Common")
-            .And().DoNotResideInNamespaceContaining("Repositories")
-            .And().DoNotResideInNamespaceContaining("Exceptions")
-            .And().DoNotHaveNameMatching(".*Id.*")
-            .And().DoNotHaveNameMatching(".*Vogen.*")
-            .And().DoNotHaveName("ThrowHelper")
-            .And().DoNotHaveNameEndingWith("Spec")
-            .And().DoNotHaveNameEndingWith("Errors")
-            .And().AreNotInterfaces()
-            .GetTypes()
-            .Where(t => !t.IsEnum)
+        // Arrange - use Assembly.GetTypes() to avoid NetArchTest Coverlet issues
+        var domainModels = DomainAssembly.GetTypes()
+            .Where(t => !t.FullName?.Contains("Coverlet.Core.Instrumentation.Tracker") == true)
+            .Where(t => !t.Name.Contains("Id") &&
+                       !t.Name.Contains("Vogen") &&
+                       t.Name != "ThrowHelper" &&
+                       !t.Name.EndsWith("Spec") &&
+                       !t.Name.EndsWith("Errors") &&
+                       !t.Name.EndsWith("Exception") && // Exclude exceptions
+                       t.Name != "BaseEntity" && // Exclude base classes themselves
+                       t.Name != "DomainEvent" &&
+                       !t.IsInterface &&
+                       !t.IsEnum &&
+                       !t.IsAbstract && // Exclude abstract base classes
+                       t.Namespace?.StartsWith("ProductOrderingSystem.ProductService.Domain") == true)
             .ToList();
 
         domainModels.Dump(output);
@@ -96,16 +97,31 @@ public class DomainModel(ITestOutputHelper output) : TestBase
     [Fact]
     public void DomainLayer_ShouldNotReferenceInfrastructureConcerns()
     {
-        var types = Types.InAssembly(DomainAssembly)
-            .GetTypes();
-
-        var infrastructureDependencies = types
-            .Where(t => t.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                .Any(f => f.FieldType.Namespace?.Contains("MongoDB") == true ||
-                         f.FieldType.Namespace?.Contains("RabbitMQ") == true ||
-                         f.FieldType.Namespace?.Contains("EntityFramework") == true ||
-                         f.FieldType.Namespace?.Contains("Dapper") == true))
+        // Filter out Coverlet instrumentation types that cause TypeLoadException in CI
+        var types = DomainAssembly.GetTypes()
+            .Where(t => !t.FullName?.Contains("Coverlet.Core.Instrumentation.Tracker") == true)
             .ToList();
+
+        var infrastructureDependencies = new List<Type>();
+        
+        foreach (var type in types)
+        {
+            try
+            {
+                var fields = type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                if (fields.Any(f => f.FieldType.Namespace?.Contains("MongoDB") == true ||
+                                   f.FieldType.Namespace?.Contains("RabbitMQ") == true ||
+                                   f.FieldType.Namespace?.Contains("EntityFramework") == true ||
+                                   f.FieldType.Namespace?.Contains("Dapper") == true))
+                {
+                    infrastructureDependencies.Add(type);
+                }
+            }
+            catch (TypeLoadException)
+            {
+                // Skip types that can't be loaded
+            }
+        }
 
         infrastructureDependencies.Should().BeEmpty();
     }
