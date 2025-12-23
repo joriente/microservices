@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.Application\ProductOrderingSystem.CustomerService.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.Domain\ProductOrderingSystem.CustomerService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.Infrastructure\ProductOrderingSystem.CustomerService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\CustomerService\ProductOrderingSystem.CustomerService.WebAPI\ProductOrderingSystem.CustomerService.WebAPI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\" />
+  </ItemGroup>
+
+</Project>

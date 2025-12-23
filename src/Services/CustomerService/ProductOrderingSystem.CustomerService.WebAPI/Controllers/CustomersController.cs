@@ -6,7 +6,8 @@ using ProductOrderingSystem.CustomerService.Application.Customers.Commands.Creat
 using ProductOrderingSystem.CustomerService.Application.Customers.Commands.UpdateCustomer;
 using ProductOrderingSystem.CustomerService.Application.Customers.Queries.GetCustomerById;
 using ProductOrderingSystem.CustomerService.Application.Customers.Queries.GetCustomers;
-using ProductOrderingSystem.CustomerService.Domain.ValueObjects;
+using ProductOrderingSystem.Shared.Contracts.Customers;
+using DomainAddressType = ProductOrderingSystem.CustomerService.Domain.ValueObjects.AddressType;
 
 namespace ProductOrderingSystem.CustomerService.WebAPI.Controllers;
 
@@ -109,7 +110,7 @@ public class CustomersController : ControllerBase
             request.PostalCode,
             request.Country,
             request.IsDefault,
-            request.Type);
+            (DomainAddressType)request.Type); // Map from Shared.Contracts to Domain
 
         var result = await _mediator.Send(command);
 
@@ -133,23 +134,3 @@ public class CustomersController : ControllerBase
         return Problem(statusCode: statusCode, title: firstError.Description);
     }
 }
-
-public record CreateCustomerRequest(
-    string Email,
-    string FirstName,
-    string LastName,
-    string? PhoneNumber);
-
-public record UpdateCustomerRequest(
-    string FirstName,
-    string LastName,
-    string? PhoneNumber);
-
-public record AddAddressRequest(
-    string Street,
-    string City,
-    string State,
-    string PostalCode,
-    string Country,
-    bool IsDefault,
-    AddressType Type);

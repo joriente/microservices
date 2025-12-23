@@ -1,6 +1,7 @@
 using MediatR;
 using ProductOrderingSystem.PaymentService.Application.Commands;
 using ProductOrderingSystem.PaymentService.Application.Queries;
+using ProductOrderingSystem.Shared.Contracts.Payments;
 
 namespace ProductOrderingSystem.PaymentService.WebAPI.Endpoints;
 
@@ -80,12 +81,4 @@ public static class PaymentEndpoints
         .WithName("ProcessPayment")
         .WithDescription("Manually process a payment (for testing)");
     }
-
-    public record RefundRequest(string Reason);
-    
-    public record ProcessPaymentRequest(
-        Guid OrderId,
-        Guid UserId,
-        decimal Amount,
-        string Currency);
 }
