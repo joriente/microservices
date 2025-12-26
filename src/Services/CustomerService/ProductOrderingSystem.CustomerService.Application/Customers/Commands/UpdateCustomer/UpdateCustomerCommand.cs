@@ -1,6 +1,5 @@
 using ErrorOr;
 using FluentValidation;
-using MediatR;
 using ProductOrderingSystem.CustomerService.Application.Customers.Commands.CreateCustomer;
 using ProductOrderingSystem.CustomerService.Domain.Repositories;
 
@@ -10,7 +9,7 @@ public record UpdateCustomerCommand(
     Guid CustomerId,
     string FirstName,
     string LastName,
-    string? PhoneNumber) : IRequest<ErrorOr<CustomerResponse>>;
+    string? PhoneNumber);
 
 public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCommand>
 {
@@ -32,7 +31,7 @@ public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCo
     }
 }
 
-public class UpdateCustomerCommandHandler : IRequestHandler<UpdateCustomerCommand, ErrorOr<CustomerResponse>>
+public class UpdateCustomerCommandHandler
 {
     private readonly ICustomerRepository _repository;
 

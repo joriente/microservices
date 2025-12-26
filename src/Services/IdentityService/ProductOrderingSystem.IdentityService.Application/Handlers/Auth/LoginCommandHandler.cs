@@ -7,7 +7,7 @@ using ProductOrderingSystem.Shared.Contracts.Identity;
 
 namespace ProductOrderingSystem.IdentityService.Application.Handlers.Auth;
 
-public class LoginCommandHandler : IRequestHandler<LoginCommand, ErrorOr<LoginResponse>>
+public class LoginCommandHandler
 {
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtTokenService;

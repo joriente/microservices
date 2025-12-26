@@ -163,7 +163,7 @@ To enable it, set in `appsettings.Development.json`:
 
 - **Direct Database Access**: 
   - MongoDB for ProductService and IdentityService
-  - Bypasses HTTP/MediatR for faster bulk insertion
+  - Bypasses HTTP/Wolverine for faster bulk insertion
 - **Optimized Seeding**:
   - Bulk insert all products first (`InsertManyAsync`)
   - Then publish events separately with error handling

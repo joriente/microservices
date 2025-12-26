@@ -1,11 +1,10 @@
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.AnalyticsService.Application.Queries;
 using ProductOrderingSystem.AnalyticsService.Infrastructure.Data;
 
 namespace ProductOrderingSystem.AnalyticsService.Infrastructure.Queries;
 
-public class GetPopularProductsHandler : IRequestHandler<GetPopularProducts.Query, List<GetPopularProducts.Result>>
+public class GetPopularProductsHandler
 {
     private readonly AnalyticsDbContext _context;
 

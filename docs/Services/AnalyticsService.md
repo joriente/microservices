@@ -3,7 +3,7 @@
 ## Overview
 The Analytics Service collects, processes, and analyzes business metrics from the microservices architecture. It consumes events from all services, aggregates data, and provides insights through dashboards and reports. Integration with Microsoft Fabric enables advanced analytics and data pipelines.
 
-**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | Azure Event Hub | Microsoft Fabric | Aspire
+**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | Wolverine.net | Azure Event Hub | Microsoft Fabric | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Analytics Service collects, processes, and analyzes business metrics from th
 graph TB
     subgraph "Analytics Service"
         API[Web API<br/>Analytics Endpoints]
-        Handlers[MediatR Handlers<br/>Queries]
+        Handlers[Wolverine Handlers<br/>Queries]
         Aggregator[Data Aggregator]
         EFCore[Entity Framework Core]
         Domain[Domain Layer<br/>Analytics Entities]
@@ -194,7 +194,7 @@ graph TB
 - **Npgsql**: PostgreSQL .NET driver
 
 ### CQRS
-- **MediatR**: Query handling for analytics requests
+- **Wolverine.net**: Query handling for analytics requests
 
 ### Messaging
 - **MassTransit**: Event consumption from RabbitMQ

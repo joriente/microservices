@@ -1,9 +1,8 @@
 using ErrorOr;
-using MediatR;
 
 namespace ProductOrderingSystem.CartService.Application.Queries.Carts;
 
-public record GetCartByIdQuery(string CartId) : IRequest<ErrorOr<CartDto>>;
+public record GetCartByIdQuery(string CartId);
 
 public record CartDto(
     string Id,

@@ -273,7 +273,7 @@ Each service owns its data - no shared databases:
 - ✅ **Polyglot Microservices** - .NET and Java services working together via RabbitMQ
 - ✅ **Event-Driven Architecture** - RabbitMQ for async cross-service communication
 - ✅ **Real-Time Analytics** - Event stream processing with dual-write pattern (local + cloud)
-- ✅ **CQRS** - Command Query Responsibility Segregation with MediatR (.NET)
+- ✅ **CQRS** - Command Query Responsibility Segregation with Wolverine.net (.NET)
 - ✅ **Clean Architecture** - Domain/Application/Infrastructure separation
 - ✅ **Database Per Service** - Polyglot persistence (PostgreSQL, MongoDB)
 - ✅ **API Gateway** - Single entry point pattern
@@ -639,7 +639,7 @@ Clean Architecture organizes code into concentric layers with strict dependency 
 ┌──────────────────▼──────────────────────────────────────┐
 │               Application Layer                          │
 │  • Use cases / Commands / Queries (CQRS)               │
-│  • MediatR handlers                                     │
+│  • Wolverine message handlers                           │
 │  • Interfaces for repositories                          │
 │  • DTOs and mapping                                     │
 └──────────────────┬──────────────────────────────────────┘
@@ -723,7 +723,7 @@ InventoryService/
 │   │   ├── GetInventory.cs              # Everything for "Get Inventory"
 │   │   │   ├── Endpoint (Minimal API)
 │   │   │   ├── Query record
-│   │   │   ├── Handler (MediatR)
+│   │   │   ├── Handler (Wolverine)
 │   │   │   ├── Response DTO
 │   │   │   └── Validator
 │   │   ├── ReserveStock.cs              # Everything for "Reserve Stock"

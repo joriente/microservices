@@ -3,7 +3,7 @@
 ## Overview
 The Cart Service manages shopping carts for customers, handling cart creation, item management, and integration with product information. It acts as a temporary storage for customer selections before order placement.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Product Cache | Aspire
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | Product Cache | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Cart Service manages shopping carts for customers, handling cart creation, i
 graph TB
     subgraph "Cart Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         Domain[Domain Layer<br/>Cart Entity]
         Repository[MongoDB Repository]
         
@@ -213,7 +213,7 @@ stateDiagram-v2
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Messaging
-- **MediatR**: Command/Query handling pattern
+- **Wolverine.net**: Command/Query handling and message bus
 - **MassTransit**: Message bus abstraction
 - **MassTransit.RabbitMQ**: RabbitMQ transport
 

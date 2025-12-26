@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProductOrderingSystem.CustomerService.Application.Customers.Commands.AddAddress;
@@ -16,12 +16,12 @@ namespace ProductOrderingSystem.CustomerService.WebAPI.Controllers;
 [Authorize]
 public class CustomersController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMessageBus _messageBus;
     private readonly ILogger<CustomersController> _logger;
 
-    public CustomersController(IMediator mediator, ILogger<CustomersController> logger)
+    public CustomersController(IMessageBus messageBus, ILogger<CustomersController> logger)
     {
-        _mediator = mediator;
+        _messageBus = messageBus;
         _logger = logger;
     }
 
@@ -30,7 +30,7 @@ public class CustomersController : ControllerBase
     {
         var skip = (page - 1) * pageSize;
         var query = new GetCustomersQuery(skip, pageSize);
-        var result = await _mediator.Send(query);
+        var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<GetCustomersResponse>>(query);
 
         return result.Match(
             success =>
@@ -60,7 +60,7 @@ public class CustomersController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var query = new GetCustomerByIdQuery(id);
-        var result = await _mediator.Send(query);
+        var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<CustomerResponse>>(query);
 
         return result.Match(
             success => Ok(success),
@@ -76,7 +76,7 @@ public class CustomersController : ControllerBase
             request.LastName,
             request.PhoneNumber);
 
-        var result = await _mediator.Send(command);
+        var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<CustomerResponse>>(command);
 
         return result.Match(
             success => CreatedAtAction(nameof(GetById), new { id = success.Id }, null), // Return 201 + Location header + empty body
@@ -92,7 +92,7 @@ public class CustomersController : ControllerBase
             request.LastName,
             request.PhoneNumber);
 
-        var result = await _mediator.Send(command);
+        var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<CustomerResponse>>(command);
 
         return result.Match(
             success => Ok(success),
@@ -112,7 +112,7 @@ public class CustomersController : ControllerBase
             request.IsDefault,
             (DomainAddressType)request.Type); // Map from Shared.Contracts to Domain
 
-        var result = await _mediator.Send(command);
+        var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<CustomerResponse>>(command);
 
         return result.Match(
             success => Ok(success),

@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using Microsoft.AspNetCore.Http.HttpResults;
 using ProductOrderingSystem.AnalyticsService.Application.Queries;
 
@@ -35,33 +35,33 @@ public static class AnalyticsEndpoints
     }
 
     private static async Task<Ok<GetAnalyticsSummary.Result>> GetSummary(
-        IMediator mediator)
+        IMessageBus messageBus)
     {
-        var result = await mediator.Send(new GetAnalyticsSummary.Query());
+        var result = await messageBus.InvokeAsync<GetAnalyticsSummary.Result>(new GetAnalyticsSummary.Query());
         return TypedResults.Ok(result);
     }
 
     private static async Task<Ok<List<GetDailyOrders.Result>>> GetDailyOrders(
-        IMediator mediator,
+        IMessageBus messageBus,
         int days = 7)
     {
-        var result = await mediator.Send(new GetDailyOrders.Query(days));
+        var result = await messageBus.InvokeAsync<List<GetDailyOrders.Result>>(new GetDailyOrders.Query(days));
         return TypedResults.Ok(result);
     }
 
     private static async Task<Ok<List<GetDailyRevenue.Result>>> GetDailyRevenue(
-        IMediator mediator,
+        IMessageBus messageBus,
         int days = 7)
     {
-        var result = await mediator.Send(new GetDailyRevenue.Query(days));
+        var result = await messageBus.InvokeAsync<List<GetDailyRevenue.Result>>(new GetDailyRevenue.Query(days));
         return TypedResults.Ok(result);
     }
 
     private static async Task<Ok<List<GetPopularProducts.Result>>> GetPopularProducts(
-        IMediator mediator,
+        IMessageBus messageBus,
         int top = 10)
     {
-        var result = await mediator.Send(new GetPopularProducts.Query(top));
+        var result = await messageBus.InvokeAsync<List<GetPopularProducts.Result>>(new GetPopularProducts.Query(top));
         return TypedResults.Ok(result);
     }
 

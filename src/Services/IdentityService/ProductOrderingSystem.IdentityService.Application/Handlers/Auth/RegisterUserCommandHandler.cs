@@ -6,7 +6,7 @@ using ProductOrderingSystem.Shared.Contracts.Identity;
 
 namespace ProductOrderingSystem.IdentityService.Application.Handlers.Auth;
 
-public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, ErrorOr<UserDto>>
+public class RegisterUserCommandHandler
 {
     private readonly IUserRepository _userRepository;
 

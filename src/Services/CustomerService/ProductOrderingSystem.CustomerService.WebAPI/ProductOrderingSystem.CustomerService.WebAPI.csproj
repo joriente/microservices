@@ -11,7 +11,8 @@
     <PackageReference Include="ErrorOr" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="MassTransit.RabbitMQ" />
-    <PackageReference Include="MediatR" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.Http" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />

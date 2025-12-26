@@ -9,6 +9,7 @@ using ProductOrderingSystem.CustomerService.Domain.Repositories;
 using ProductOrderingSystem.CustomerService.Infrastructure.Repositories;
 using Scalar.AspNetCore;
 using System.Text;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,10 +39,10 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 // Add repositories
 builder.Services.AddSingleton<ICustomerRepository, MongoCustomerRepository>();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg =>
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(CreateCustomerCommand).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(CreateCustomerCommand).Assembly);
 });
 
 // Add FluentValidation

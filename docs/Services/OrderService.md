@@ -3,7 +3,7 @@
 ## Overview
 The Order Service is the core orchestrator for order processing in the microservices architecture. It implements the Saga pattern to coordinate distributed transactions across multiple services (Payment, Inventory, Cart) and handles the entire order lifecycle.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Product Cache | Aspire
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | Product Cache | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Order Service is the core orchestrator for order processing in the microserv
 graph TB
     subgraph "Order Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         Saga[Order State Machine<br/>Saga Orchestrator]
         Domain[Domain Layer<br/>Order Aggregate]
         Repository[MongoDB Repository]
@@ -179,7 +179,7 @@ sequenceDiagram
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Messaging
-- **MediatR**: Command/Query handling
+- **Wolverine.net**: Command/Query handling and message bus
 - **MassTransit**: Message bus and saga orchestration
 - **MassTransit.RabbitMQ**: RabbitMQ transport
 

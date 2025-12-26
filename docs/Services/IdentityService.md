@@ -3,7 +3,7 @@
 ## Overview
 The Identity Service handles user authentication, authorization, and JWT token management for the microservices architecture. It provides secure user registration, login, and token validation services.
 
-**Technology Stack**: .NET 10.0 | MongoDB | JWT Authentication | BCrypt | MediatR | Aspire
+**Technology Stack**: .NET 10.0 | MongoDB | JWT Authentication | BCrypt | Wolverine.net | Aspire
 
 ## Architecture
 
@@ -182,7 +182,7 @@ The Identity Service automatically creates a default admin user on startup if no
 ### Core Framework
 - **.NET 10.0**: Latest .NET runtime
 - **ASP.NET Core**: Web API with Minimal APIs
-- **MediatR**: Command handling for authentication operations
+- **Wolverine.net**: Command handling for authentication operations
 
 ### Database
 - **MongoDB.Driver**: Official MongoDB driver

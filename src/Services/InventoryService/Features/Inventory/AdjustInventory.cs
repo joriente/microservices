@@ -1,5 +1,5 @@
 using FluentValidation;
-using MediatR;
+using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Models;
@@ -15,7 +15,7 @@ public static class AdjustInventory
     public record Command(
         Guid ProductId,
         int Quantity, // Positive for adding, negative for removing
-        string Reason) : IRequest<Response?>;
+        string Reason);
 
     // Response
     public record Response(
@@ -45,7 +45,7 @@ public static class AdjustInventory
     }
 
     // Handler
-    public class Handler : IRequestHandler<Command, Response?>
+    public class Handler
     {
         private readonly InventoryDbContext _context;
         private readonly ILogger<Handler> _logger;
@@ -115,7 +115,7 @@ public static class AdjustInventory
     {
         app.MapPost("/api/inventory/adjust", async (
             Command command,
-            IMediator mediator,
+            IMessageBus messageBus,
             IValidator<Command> validator) =>
         {
             var validationResult = await validator.ValidateAsync(command);
@@ -124,7 +124,7 @@ public static class AdjustInventory
 
             try
             {
-                var result = await mediator.Send(command);
+                var result = await messageBus.InvokeAsync<Response?>(command);
                 return result is not null 
                     ? Results.Ok(result) 
                     : Results.NotFound(new { message = "Inventory item not found" });

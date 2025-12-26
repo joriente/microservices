@@ -1,21 +1,23 @@
 using MassTransit;
-using MediatR;
+using Wolverine;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.PaymentService.Application.Commands;
 using ProductOrderingSystem.Shared.Contracts.Events;
+using ProductOrderingSystem.PaymentService.Application.DTOs;
+using ErrorOr;
 
 namespace ProductOrderingSystem.PaymentService.Application.Consumers;
 
 public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
 {
-    private readonly IMediator _mediator;
+    private readonly IMessageBus _messageBus;
     private readonly ILogger<OrderCreatedEventConsumer> _logger;
 
     public OrderCreatedEventConsumer(
-        IMediator mediator,
+        IMessageBus messageBus,
         ILogger<OrderCreatedEventConsumer> logger)
     {
-        _mediator = mediator;
+        _messageBus = messageBus;
         _logger = logger;
     }
 
@@ -31,14 +33,14 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
 
         try
         {
-            // Process payment through MediatR command
+            // Process payment through message bus
             var command = new ProcessPaymentCommand(
                 message.OrderId,
                 message.CustomerId,
                 message.TotalAmount,
                 "USD"); // Default currency - could be part of the order event
 
-            var result = await _mediator.Send(command);
+            var result = await _messageBus.InvokeAsync<ErrorOr<PaymentDto>>(command);
 
             if (result.IsError)
             {

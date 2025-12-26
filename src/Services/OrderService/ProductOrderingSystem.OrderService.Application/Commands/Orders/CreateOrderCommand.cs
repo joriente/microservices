@@ -1,5 +1,4 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.OrderService.Domain.Entities;
 
 namespace ProductOrderingSystem.OrderService.Application.Commands.Orders;
@@ -10,7 +9,7 @@ public record CreateOrderCommand(
     string CustomerName,
     List<CreateOrderItemCommand> Items,
     string? Notes = null
-) : IRequest<ErrorOr<Order>>;
+);
 
 public record CreateOrderItemCommand(
     string ProductId,

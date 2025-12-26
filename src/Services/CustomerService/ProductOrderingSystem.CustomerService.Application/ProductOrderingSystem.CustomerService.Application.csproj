@@ -10,7 +10,7 @@
     <PackageReference Include="ErrorOr" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="MassTransit" />
-    <PackageReference Include="MediatR" />
+    <PackageReference Include="WolverineFx" />
     <PackageReference Include="MongoDB.Driver" />
   </ItemGroup>
 

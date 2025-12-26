@@ -1,5 +1,4 @@
 using ErrorOr;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.PaymentService.Application.Commands;
 using ProductOrderingSystem.PaymentService.Domain.Repositories;
@@ -7,7 +6,7 @@ using ProductOrderingSystem.PaymentService.Domain.Services;
 
 namespace ProductOrderingSystem.PaymentService.Application.CommandHandlers;
 
-public class RefundPaymentCommandHandler : IRequestHandler<RefundPaymentCommand, ErrorOr<Success>>
+public class RefundPaymentCommandHandler
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IStripePaymentService _stripeService;

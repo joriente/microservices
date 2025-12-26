@@ -1,11 +1,10 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CartService.Domain.Entities;
 using ProductOrderingSystem.CartService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CartService.Application.Commands.Carts;
 
-public class CreateCartCommandHandler : IRequestHandler<CreateCartCommand, ErrorOr<CreateCartResponse>>
+public class CreateCartCommandHandler
 {
     private readonly ICartRepository _cartRepository;
 

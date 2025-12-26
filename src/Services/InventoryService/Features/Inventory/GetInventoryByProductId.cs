@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Models;
@@ -11,7 +11,7 @@ namespace ProductOrderingSystem.InventoryService.Features.Inventory;
 public static class GetInventoryByProductId
 {
     // Query
-    public record Query(Guid ProductId) : IRequest<Response?>;
+    public record Query(Guid ProductId);
 
     // Response
     public record Response(
@@ -27,7 +27,7 @@ public static class GetInventoryByProductId
         DateTime UpdatedAt);
 
     // Handler
-    public class Handler : IRequestHandler<Query, Response?>
+    public class Handler
     {
         private readonly InventoryDbContext _context;
 
@@ -63,9 +63,9 @@ public static class GetInventoryByProductId
     {
         app.MapGet("/api/inventory/{productId:guid}", async (
             Guid productId,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
-            var result = await mediator.Send(new Query(productId));
+            var result = await messageBus.InvokeAsync<Response?>(new Query(productId));
             return result is not null ? Results.Ok(result) : Results.NotFound();
         })
         .WithName("GetInventoryByProductId")

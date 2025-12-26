@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using ProductOrderingSystem.IdentityService.Application.Commands.Auth;
 using ProductOrderingSystem.IdentityService.Domain.Repositories;
 
@@ -31,13 +31,13 @@ public class AdminUserSeeder : BackgroundService
 
                 using var scope = _serviceProvider.CreateScope();
                 var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-                var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                var messageBus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
 
                 // Check if admin user already exists
                 var existingAdmin = await userRepository.GetByUsernameAsync("admin", stoppingToken);
                 if (existingAdmin == null)
                 {
-                    // Create admin user using MediatR command to ensure events are published
+                    // Create admin user using message bus to ensure events are published
                     var adminCommand = new RegisterUserCommand(
                         Email: "admin@productordering.com",
                         Username: "admin",
@@ -46,7 +46,7 @@ public class AdminUserSeeder : BackgroundService
                         LastName: "Administrator"
                     );
 
-                    var adminResult = await mediator.Send(adminCommand, stoppingToken);
+                    var adminResult = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ProductOrderingSystem.Shared.Contracts.Identity.UserDto>>(adminCommand, stoppingToken);
 
                     if (adminResult.IsError)
                     {

@@ -256,7 +256,7 @@ flowchart TB
     end
     
     subgraph Application["Application Layer"]
-        Queries["MediatR Queries<br/>GetAnalyticsSummary<br/>GetDailyOrders<br/>GetDailyRevenue<br/>GetPopularProducts"]
+        Queries["Wolverine Queries<br/>GetAnalyticsSummary<br/>GetDailyOrders<br/>GetDailyRevenue<br/>GetPopularProducts"]
         IEventHub["IEventHubPublisher<br/>(Interface)"]
     end
     
@@ -305,7 +305,7 @@ flowchart TB
 - **Examples**: OrderEvent, PaymentEvent with properties and validation
 
 **Application Layer (Use Cases):**
-- **MediatR Queries**: Define what the system can do
+- **Wolverine Queries**: Define what the system can do
 - **Interfaces**: Abstract external dependencies (IEventHubPublisher)
 - **DTOs**: Data transfer objects for queries and responses
 - **Orchestration**: Coordinate domain entities and infrastructure

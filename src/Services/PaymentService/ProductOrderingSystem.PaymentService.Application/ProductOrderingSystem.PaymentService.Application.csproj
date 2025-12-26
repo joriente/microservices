@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="ErrorOr" />
     <PackageReference Include="MassTransit" />
-    <PackageReference Include="MediatR" />
+    <PackageReference Include="WolverineFx" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 

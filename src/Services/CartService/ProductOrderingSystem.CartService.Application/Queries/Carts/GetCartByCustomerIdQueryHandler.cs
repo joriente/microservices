@@ -1,10 +1,9 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CartService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CartService.Application.Queries.Carts;
 
-public class GetCartByCustomerIdQueryHandler : IRequestHandler<GetCartByCustomerIdQuery, ErrorOr<CartDto>>
+public class GetCartByCustomerIdQueryHandler
 {
     private readonly ICartRepository _cartRepository;
 

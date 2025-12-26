@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using Microsoft.AspNetCore.Mvc;
 using ProductOrderingSystem.CartService.Application.Commands.Carts;
 using ProductOrderingSystem.CartService.Application.Queries.Carts;
@@ -18,7 +18,7 @@ public static class CartEndpoints
         // Get current user's cart
         group.MapGet("/me", async (
             ClaimsPrincipal user,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -27,7 +27,7 @@ public static class CartEndpoints
             }
 
             var query = new GetCartByCustomerIdQuery(userId);
-            var result = await mediator.Send(query);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CartDto>>(query);
 
             return result.Match(
                 value => Results.Ok(value),
@@ -38,10 +38,10 @@ public static class CartEndpoints
         // Get cart by ID
         group.MapGet("/{id}", async (
             string id,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var query = new GetCartByIdQuery(id);
-            var result = await mediator.Send(query);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CartDto>>(query);
 
             return result.Match(
                 value => Results.Ok(value),
@@ -52,10 +52,10 @@ public static class CartEndpoints
         // Get cart by customer ID
         group.MapGet("/customer/{customerId}", async (
             string customerId,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var query = new GetCartByCustomerIdQuery(customerId);
-            var result = await mediator.Send(query);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CartDto>>(query);
 
             return result.Match(
                 value => Results.Ok(value),
@@ -66,7 +66,7 @@ public static class CartEndpoints
         // Create cart (or get existing)
         group.MapPost("/", async (
             ClaimsPrincipal user,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userEmail = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
@@ -77,7 +77,7 @@ public static class CartEndpoints
             }
 
             var command = new CreateCartCommand(userId, userEmail);
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CreateCartResponse>>(command);
 
             return result.Match(
                 value => Results.Ok(value),
@@ -89,7 +89,7 @@ public static class CartEndpoints
         group.MapPost("/{cartId}/items", async (
             string cartId,
             [FromBody] AddItemToCartRequest request,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var command = new AddItemToCartCommand(
                 cartId,
@@ -99,7 +99,7 @@ public static class CartEndpoints
                 request.Quantity
             );
 
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ErrorOr.Success>>(command);
 
             return result.Match(
                 value => Results.NoContent(),
@@ -116,7 +116,7 @@ public static class CartEndpoints
         group.MapPost("/items", async (
             [FromBody] AddItemToCartRequest request,
             ClaimsPrincipal user,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var userId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userEmail = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
@@ -128,14 +128,14 @@ public static class CartEndpoints
 
             // Get or create cart for user
             var cartQuery = new GetCartByCustomerIdQuery(userId);
-            var cartResult = await mediator.Send(cartQuery);
+            var cartResult = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CartDto>>(cartQuery);
 
             string cartId;
             if (cartResult.IsError)
             {
                 // Cart doesn't exist, create it
                 var createCommand = new CreateCartCommand(userId, userEmail);
-                var createResult = await mediator.Send(createCommand);
+                var createResult = await messageBus.InvokeAsync<ErrorOr.ErrorOr<CreateCartResponse>>(createCommand);
                 
                 if (createResult.IsError)
                 {
@@ -158,13 +158,13 @@ public static class CartEndpoints
                 request.Quantity
             );
 
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ErrorOr.Success>>(command);
 
             return result.Match(
                 value => {
                     // Return the updated cart
                     var updatedCartQuery = new GetCartByIdQuery(cartId);
-                    var updatedCart = mediator.Send(updatedCartQuery).Result;
+                    var updatedCart = messageBus.InvokeAsync<ErrorOr.ErrorOr<CartDto>>(updatedCartQuery).Result;
                     return updatedCart.Match(
                         cart => Results.Ok(cart),
                         errors => Results.Ok(value)
@@ -184,10 +184,10 @@ public static class CartEndpoints
             string cartId,
             string productId,
             [FromBody] UpdateItemQuantityRequest request,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var command = new UpdateItemQuantityCommand(cartId, productId, request.Quantity);
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ErrorOr.Success>>(command);
 
             return result.Match(
                 value => Results.NoContent(),
@@ -204,10 +204,10 @@ public static class CartEndpoints
         group.MapDelete("/{cartId}/items/{productId}", async (
             string cartId,
             string productId,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var command = new RemoveItemFromCartCommand(cartId, productId);
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ErrorOr.Success>>(command);
 
             return result.Match(
                 value => Results.NoContent(),
@@ -218,10 +218,10 @@ public static class CartEndpoints
         // Clear cart
         group.MapDelete("/{cartId}", async (
             string cartId,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var command = new ClearCartCommand(cartId);
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr.ErrorOr<ErrorOr.Success>>(command);
 
             return result.Match(
                 value => Results.NoContent(),

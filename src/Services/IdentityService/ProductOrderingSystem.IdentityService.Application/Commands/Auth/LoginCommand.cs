@@ -5,4 +5,4 @@ namespace ProductOrderingSystem.IdentityService.Application.Commands.Auth;
 
 public record LoginCommand(
     string EmailOrUsername,
-    string Password) : IRequest<ErrorOr<LoginResponse>>;
+    string Password);

@@ -1,10 +1,8 @@
-using MediatR;
-
 namespace ProductOrderingSystem.AnalyticsService.Application.Queries;
 
 public static class GetAnalyticsSummary
 {
-    public record Query : IRequest<Result>;
+    public record Query;
 
     public record Result(
         int TotalOrders,

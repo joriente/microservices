@@ -1,6 +1,5 @@
 using ErrorOr;
 using MassTransit;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.OrderService.Domain.Entities;
 using ProductOrderingSystem.OrderService.Domain.Repositories;
@@ -8,7 +7,7 @@ using ProductOrderingSystem.Shared.Contracts.Events;
 
 namespace ProductOrderingSystem.OrderService.Application.Commands.Orders;
 
-public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, ErrorOr<Order>>
+public class CreateOrderCommandHandler
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IProductCacheRepository _productCacheRepository;

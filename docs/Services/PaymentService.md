@@ -3,7 +3,7 @@
 ## Overview
 The Payment Service handles payment processing, refunds, and payment transaction management. It integrates with external payment gateways and participates in the order saga pattern for distributed transaction coordination.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Stripe API | Aspire
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | Stripe API | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Payment Service handles payment processing, refunds, and payment transaction
 graph TB
     subgraph "Payment Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         PaymentProcessor[Payment Processor<br/>Gateway Integration]
         Domain[Domain Layer<br/>Payment Entity]
         Repository[MongoDB Repository]
@@ -180,7 +180,7 @@ stateDiagram-v2
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Messaging
-- **MediatR**: Command/Query handling with ErrorOr pattern
+- **Wolverine.net**: Command/Query handling with ErrorOr pattern
 - **MassTransit**: Message bus abstraction for saga coordination
 - **MassTransit.RabbitMQ**: RabbitMQ transport integration
 

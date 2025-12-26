@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ErrorOr;
-using MediatR;
+using Wolverine;
 using Microsoft.AspNetCore.Mvc;
 using ProductOrderingSystem.IdentityService.Application.Commands.Auth;
 using ProductOrderingSystem.IdentityService.Domain.Repositories;
@@ -47,7 +47,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> Register(
         [FromBody] RegisterRequest request,
-        ISender sender,
+        IMessageBus messageBus,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -58,7 +58,7 @@ public static class AuthEndpoints
             request.FirstName,
             request.LastName);
 
-        var result = await sender.Send(command, cancellationToken);
+        var result = await messageBus.InvokeAsync<ErrorOr<UserDto>>(command, cancellationToken);
 
         return result.Match(
             userDto => 
@@ -73,7 +73,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> Login(
         [FromBody] LoginRequest request,
-        ISender sender,
+        IMessageBus messageBus,
         ILogger<Program> logger,
         HttpContext httpContext,
         CancellationToken cancellationToken)
@@ -86,7 +86,7 @@ public static class AuthEndpoints
             request.EmailOrUsername,
             request.Password);
 
-        var result = await sender.Send(command, cancellationToken);
+        var result = await messageBus.InvokeAsync<ErrorOr<LoginResponse>>(command, cancellationToken);
 
         if (result.IsError)
         {

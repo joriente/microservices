@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="ErrorOr" />
-    <PackageReference Include="MediatR" />
+    <PackageReference Include="WolverineFx" />
     <PackageReference Include="MassTransit" />
   </ItemGroup>
 

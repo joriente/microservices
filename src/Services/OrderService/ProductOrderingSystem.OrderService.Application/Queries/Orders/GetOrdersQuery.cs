@@ -1,5 +1,4 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.OrderService.Domain.Entities;
 
 namespace ProductOrderingSystem.OrderService.Application.Queries.Orders;
@@ -11,7 +10,7 @@ public record GetOrdersQuery(
     DateTime? EndDate = null,
     int Page = 1,
     int PageSize = 10
-) : IRequest<ErrorOr<GetOrdersResult>>;
+);
 
 public record GetOrdersResult(
     List<Order> Orders,

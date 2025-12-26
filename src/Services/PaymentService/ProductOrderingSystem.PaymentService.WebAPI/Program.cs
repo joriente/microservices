@@ -11,6 +11,7 @@ using ProductOrderingSystem.PaymentService.Infrastructure.Persistence;
 using ProductOrderingSystem.PaymentService.Infrastructure.Services;
 using ProductOrderingSystem.PaymentService.WebAPI.Endpoints;
 using Scalar.AspNetCore;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,9 +21,10 @@ builder.AddServiceDefaults();
 // Add MongoDB using Aspire client
 builder.AddMongoDBClient("paymentdb");
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => {
-    cfg.RegisterServicesFromAssembly(typeof(ProcessPaymentCommandHandler).Assembly);
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
+{
+    opts.Discovery.IncludeAssembly(typeof(ProcessPaymentCommandHandler).Assembly);
 });
 
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();

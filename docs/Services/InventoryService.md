@@ -3,7 +3,7 @@
 ## Overview
 The Inventory Service manages product stock levels, handles inventory reservations for orders, and processes inventory adjustments. It uses a Vertical Slice Architecture pattern with PostgreSQL for data persistence.
 
-**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | MediatR | FluentValidation | Aspire
+**Technology Stack**: .NET 10.0 | PostgreSQL | Entity Framework Core | MassTransit | RabbitMQ | Wolverine.net | FluentValidation | Aspire
 
 ## Architecture
 
@@ -43,18 +43,18 @@ graph TD
     API --> Feature3[Get Inventory Slice]
     API --> Feature4[Get All Inventory Slice]
     
-    Feature1 --> Handler1[MediatR Handler]
+    Feature1 --> Handler1[Wolverine Handler]
     Feature1 --> Validator1[FluentValidation]
     Feature1 --> Command1[Command Model]
     
-    Feature2 --> Handler2[MediatR Handler]
+    Feature2 --> Handler2[Wolverine Handler]
     Feature2 --> Validator2[FluentValidation]
     Feature2 --> Command2[Command Model]
     
-    Feature3 --> Handler3[MediatR Handler]
+    Feature3 --> Handler3[Wolverine Handler]
     Feature3 --> Query3[Query Model]
     
-    Feature4 --> Handler4[MediatR Handler]
+    Feature4 --> Handler4[Wolverine Handler]
     Feature4 --> Query4[Query Model]
     
     Handler1 --> EF[EF Core DbContext]
@@ -185,7 +185,7 @@ stateDiagram-v2
 - **Aspire.Npgsql.EntityFrameworkCore.PostgreSQL**: PostgreSQL with Aspire
 
 ### CQRS and Validation
-- **MediatR**: Command/Query handling (Vertical Slices)
+- **Wolverine.net**: Command/Query handling (Vertical Slices)
 - **FluentValidation**: Request validation
 - **FluentValidation.DependencyInjectionExtensions**: DI integration
 
@@ -336,7 +336,7 @@ public static class ReserveInventory
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/api/inventory/reserve", async (Command command, 
-            IMediator mediator) => await mediator.Send(command));
+            IMessageBus messageBus) => await messageBus.InvokeAsync<Result>(command));
     }
 }
 ```
