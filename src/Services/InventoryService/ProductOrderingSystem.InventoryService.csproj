@@ -16,8 +16,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     
-    <!-- MediatR for Vertical Slices -->
-    <PackageReference Include="MediatR" />
+    <!-- WolverineFx for Vertical Slices -->
+    <PackageReference Include="WolverineFx" />
+    
+    <!-- ErrorOr for functional error handling -->
+    <PackageReference Include="ErrorOr" />
     
     <!-- FluentValidation -->
     <PackageReference Include="FluentValidation" />

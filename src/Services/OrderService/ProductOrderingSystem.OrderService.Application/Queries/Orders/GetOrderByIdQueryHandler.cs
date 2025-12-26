@@ -1,11 +1,10 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.OrderService.Domain.Entities;
 using ProductOrderingSystem.OrderService.Domain.Repositories;
 
 namespace ProductOrderingSystem.OrderService.Application.Queries.Orders;
 
-public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, ErrorOr<Order>>
+public class GetOrderByIdQueryHandler
 {
     private readonly IOrderRepository _orderRepository;
 

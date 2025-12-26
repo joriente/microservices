@@ -1,10 +1,9 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CartService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CartService.Application.Commands.Carts;
 
-public class AddItemToCartCommandHandler : IRequestHandler<AddItemToCartCommand, ErrorOr<Success>>
+public class AddItemToCartCommandHandler
 {
     private readonly ICartRepository _cartRepository;
 

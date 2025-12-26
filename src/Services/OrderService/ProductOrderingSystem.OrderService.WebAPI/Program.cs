@@ -11,15 +11,16 @@ using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using MassTransit;
 using ProductOrderingSystem.Shared.Contracts.Events;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg =>
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommand).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(CreateOrderCommand).Assembly);
 });
 
 // Add OpenAPI

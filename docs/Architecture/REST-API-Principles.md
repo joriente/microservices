@@ -28,10 +28,10 @@ This document describes the REST API principles implemented across all microserv
 ```csharp
 private static async Task<IResult> CreateResource(
     CreateResourceRequest request, 
-    IMediator mediator, 
+    IMessageBus messageBus, 
     HttpContext httpContext)
 {
-    var result = await mediator.Send(command);
+    var result = await messageBus.InvokeAsync<ResourceDto>(command);
     
     return result.Match(
         resource =>
@@ -76,10 +76,10 @@ $resource = $getResponse.Content | ConvertFrom-Json
 private static async Task<IResult> GetResources(
     int page,
     int pageSize,
-    IMediator mediator,
+    IMessageBus messageBus,
     HttpContext httpContext)
 {
-    var result = await mediator.Send(query);
+    var result = await messageBus.InvokeAsync<PagedResult>(query);
     
     return result.Match(
         queryResult => 

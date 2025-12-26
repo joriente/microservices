@@ -1,6 +1,5 @@
 using ErrorOr;
 using MassTransit;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.PaymentService.Application.Commands;
 using ProductOrderingSystem.PaymentService.Application.DTOs;
@@ -12,7 +11,7 @@ using SharedEvents = ProductOrderingSystem.Shared.Contracts.Events;
 
 namespace ProductOrderingSystem.PaymentService.Application.CommandHandlers;
 
-public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentCommand, ErrorOr<PaymentDto>>
+public class ProcessPaymentCommandHandler
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly IStripePaymentService _stripeService;

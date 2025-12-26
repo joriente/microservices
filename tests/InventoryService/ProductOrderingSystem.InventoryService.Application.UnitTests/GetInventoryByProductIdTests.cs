@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Features.Inventory;
@@ -48,14 +49,14 @@ public class GetInventoryByProductIdTests : IDisposable
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result!.ProductId.Should().Be(productId);
-        result.ProductName.Should().Be("Test Product");
-        result.QuantityOnHand.Should().Be(100);
-        result.QuantityReserved.Should().Be(20);
-        result.AvailableQuantity.Should().Be(80); // 100 - 20
-        result.ReorderLevel.Should().Be(10);
-        result.IsLowStock.Should().BeFalse();
+        result.IsError.Should().BeFalse();
+        result.Value.ProductId.Should().Be(productId);
+        result.Value.ProductName.Should().Be("Test Product");
+        result.Value.QuantityOnHand.Should().Be(100);
+        result.Value.QuantityReserved.Should().Be(20);
+        result.Value.AvailableQuantity.Should().Be(80); // 100 - 20
+        result.Value.ReorderLevel.Should().Be(10);
+        result.Value.IsLowStock.Should().BeFalse();
     }
 
     [Fact]
@@ -69,7 +70,8 @@ public class GetInventoryByProductIdTests : IDisposable
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().BeNull();
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.NotFound);
     }
 
     [Fact]
@@ -97,8 +99,8 @@ public class GetInventoryByProductIdTests : IDisposable
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result!.AvailableQuantity.Should().Be(20); // 50 - 30
+        result.IsError.Should().BeFalse();
+        result.Value.AvailableQuantity.Should().Be(20); // 50 - 30
     }
 
     [Fact]
@@ -126,9 +128,9 @@ public class GetInventoryByProductIdTests : IDisposable
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result!.AvailableQuantity.Should().Be(5); // 15 - 10
-        result.IsLowStock.Should().BeTrue();
+        result.IsError.Should().BeFalse();
+        result.Value.AvailableQuantity.Should().Be(5); // 15 - 10
+        result.Value.IsLowStock.Should().BeTrue();
     }
 
     public void Dispose()

@@ -1,3 +1,4 @@
+using ErrorOr;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
 
@@ -30,7 +31,7 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
             _productRepository = productRepository;
         }
 
-        public async Task<SearchProductsResult> Handle(SearchProductsQuery query, CancellationToken cancellationToken)
+        public async Task<ErrorOr<SearchProductsResult>> Handle(SearchProductsQuery query, CancellationToken cancellationToken)
         {
             var (products, totalCount) = await _productRepository.SearchAsync(
                 query.SearchTerm,

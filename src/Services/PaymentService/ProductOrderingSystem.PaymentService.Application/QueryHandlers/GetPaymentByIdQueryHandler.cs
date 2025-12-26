@@ -1,5 +1,4 @@
 using ErrorOr;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using ProductOrderingSystem.PaymentService.Application.DTOs;
 using ProductOrderingSystem.PaymentService.Application.Queries;
@@ -7,7 +6,7 @@ using ProductOrderingSystem.PaymentService.Domain.Repositories;
 
 namespace ProductOrderingSystem.PaymentService.Application.QueryHandlers;
 
-public class GetPaymentByIdQueryHandler : IRequestHandler<GetPaymentByIdQuery, ErrorOr<PaymentDto>>
+public class GetPaymentByIdQueryHandler
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly ILogger<GetPaymentByIdQueryHandler> _logger;

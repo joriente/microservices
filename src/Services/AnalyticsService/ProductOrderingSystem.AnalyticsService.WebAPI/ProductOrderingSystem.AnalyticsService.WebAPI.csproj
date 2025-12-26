@@ -16,8 +16,10 @@
     <!-- Aspire PostgreSQL with EF Core -->
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     
-    <!-- MediatR -->
-    <PackageReference Include="MediatR" />
+    <!-- Wolverine -->
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.RabbitMQ" />
+    <PackageReference Include="WolverineFx.Http" />
     
     <!-- MassTransit for RabbitMQ -->
     <PackageReference Include="MassTransit" />

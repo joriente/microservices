@@ -3,7 +3,7 @@
 ## Overview
 The Customer Service manages customer profiles, addresses, and customer-related information. It synchronizes with the Identity Service and provides customer data to other services in the system.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | FluentValidation | ErrorOr
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | FluentValidation | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Customer Service manages customer profiles, addresses, and customer-related 
 graph TB
     subgraph "Customer Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         Domain[Domain Layer<br/>Customer Entity]
         Repository[MongoDB Repository]
         
@@ -173,7 +173,7 @@ sequenceDiagram
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Validation
-- **MediatR**: Command/Query handling
+- **Wolverine.net**: Command/Query handling and message bus
 - **FluentValidation.DependencyInjectionExtensions**: Request validation
 
 ### Error Handling
@@ -287,9 +287,9 @@ public enum CustomerStatus
    ```
 
 ### Consumed Events
-1. **UserRegisteredEvent**: Create customer profile from Identity Service
-2. **UserUpdatedEvent**: Sync user information changes
-3. **OrderCompletedEvent**: Update customer order history
+1. **OrderCreatedEvent**: Track customer order history and activity
+
+**Note**: The Customer Service currently consumes OrderCreated events to maintain customer order history. It does not consume UserRegistered events (no integration with Identity Service yet) and does not publish events.
 
 ## Features
 

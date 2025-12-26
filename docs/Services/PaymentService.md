@@ -3,7 +3,7 @@
 ## Overview
 The Payment Service handles payment processing, refunds, and payment transaction management. It integrates with external payment gateways and participates in the order saga pattern for distributed transaction coordination.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Stripe API (Mock)
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | Stripe API | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Payment Service handles payment processing, refunds, and payment transaction
 graph TB
     subgraph "Payment Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         PaymentProcessor[Payment Processor<br/>Gateway Integration]
         Domain[Domain Layer<br/>Payment Entity]
         Repository[MongoDB Repository]
@@ -180,23 +180,28 @@ stateDiagram-v2
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Messaging
-- **MediatR**: Command/Query handling
-- **MassTransit**: Message bus abstraction
-- **MassTransit.RabbitMQ**: RabbitMQ transport
+- **Wolverine.net**: Command/Query handling with ErrorOr pattern
+- **MassTransit**: Message bus abstraction for saga coordination
+- **MassTransit.RabbitMQ**: RabbitMQ transport integration
 
 ### Database
-- **MongoDB.Driver**: Official MongoDB driver
+- **MongoDB.Driver**: Official MongoDB driver for payment records
 - **Aspire.MongoDB.Driver**: .NET Aspire MongoDB integration
 
 ### API Documentation
-- **Scalar.AspNetCore**: Modern API documentation
-- **Microsoft.AspNetCore.OpenApi**: OpenAPI support
+- **Scalar.AspNetCore**: Modern API documentation UI
+- **Microsoft.AspNetCore.OpenApi**: OpenAPI/Swagger support
 
 ### Authentication
 - **Microsoft.AspNetCore.Authentication.JwtBearer**: JWT authentication
 
 ### Payment Gateway
-- **Stripe.net** (or Mock Implementation): Payment processing
+- **Stripe.net**: Stripe payment gateway integration (configurable)
+- **Mock Payment Service**: For development/testing without real Stripe API
+
+**Payment Gateway Configuration**:
+- Real Stripe: Requires API keys in User Secrets
+- Mock Service: Simulates payment processing for development
 
 ### .NET Aspire
 - **Aspire ServiceDefaults**: Service configuration

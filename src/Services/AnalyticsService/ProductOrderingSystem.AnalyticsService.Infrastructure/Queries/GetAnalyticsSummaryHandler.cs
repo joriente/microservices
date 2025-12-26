@@ -1,11 +1,10 @@
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.AnalyticsService.Application.Queries;
 using ProductOrderingSystem.AnalyticsService.Infrastructure.Data;
 
 namespace ProductOrderingSystem.AnalyticsService.Infrastructure.Queries;
 
-public class GetAnalyticsSummaryHandler : IRequestHandler<GetAnalyticsSummary.Query, GetAnalyticsSummary.Result>
+public class GetAnalyticsSummaryHandler
 {
     private readonly AnalyticsDbContext _context;
 

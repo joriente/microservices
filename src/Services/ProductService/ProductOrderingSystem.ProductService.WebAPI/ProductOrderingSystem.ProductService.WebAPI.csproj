@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.MongoDB.Driver" />
     <PackageReference Include="Bogus" />
+    <PackageReference Include="ErrorOr" />
     <PackageReference Include="WolverineFx" />
     <PackageReference Include="WolverineFx.RabbitMQ" />
     <PackageReference Include="WolverineFx.Http" />

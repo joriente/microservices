@@ -1,6 +1,6 @@
 using FluentValidation;
 using MassTransit;
-using MediatR;
+using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Models;
@@ -16,7 +16,7 @@ public static class ReserveInventory
     // Command
     public record Command(
         Guid OrderId,
-        List<ReservationItem> Items) : IRequest<Result>;
+        List<ReservationItem> Items);
 
     public record ReservationItem(Guid ProductId, int Quantity);
 
@@ -39,7 +39,7 @@ public static class ReserveInventory
     }
 
     // Handler
-    public class Handler : IRequestHandler<Command, Result>
+    public class Handler
     {
         private readonly InventoryDbContext _context;
         private readonly IPublishEndpoint _publishEndpoint;
@@ -174,7 +174,7 @@ public static class ReserveInventory
         app.MapPost("/api/inventory/reserve", async (
             Command command,
             IValidator<Command> validator,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var validationResult = await validator.ValidateAsync(command);
             if (!validationResult.IsValid)
@@ -182,7 +182,7 @@ public static class ReserveInventory
                 return Results.BadRequest(new Result(false, null, string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
             }
             
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<Result>(command);
             
             if (result.Success && result.ReservationId.HasValue)
             {

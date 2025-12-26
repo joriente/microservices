@@ -8,4 +8,4 @@ public record RegisterUserCommand(
     string Username,
     string Password,
     string FirstName,
-    string LastName) : IRequest<ErrorOr<UserDto>>;
+    string LastName);

@@ -1,5 +1,6 @@
+using ErrorOr;
 using FluentValidation;
-using MediatR;
+using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Models;
@@ -15,7 +16,7 @@ public static class AdjustInventory
     public record Command(
         Guid ProductId,
         int Quantity, // Positive for adding, negative for removing
-        string Reason) : IRequest<Response?>;
+        string Reason);
 
     // Response
     public record Response(
@@ -45,7 +46,7 @@ public static class AdjustInventory
     }
 
     // Handler
-    public class Handler : IRequestHandler<Command, Response?>
+    public class Handler
     {
         private readonly InventoryDbContext _context;
         private readonly ILogger<Handler> _logger;
@@ -56,7 +57,7 @@ public static class AdjustInventory
             _logger = logger;
         }
 
-        public async Task<Response?> Handle(Command request, CancellationToken cancellationToken)
+        public async Task<ErrorOr<Response>> Handle(Command request, CancellationToken cancellationToken)
         {
             var item = await _context.InventoryItems
                 .FirstOrDefaultAsync(x => x.ProductId == request.ProductId, cancellationToken);
@@ -64,7 +65,7 @@ public static class AdjustInventory
             if (item == null)
             {
                 _logger.LogWarning("Inventory item not found for product {ProductId}", request.ProductId);
-                return null;
+                return Error.NotFound("InventoryItem.NotFound", $"Inventory item not found for product {request.ProductId}");
             }
 
             // Adjust the inventory
@@ -84,7 +85,7 @@ public static class AdjustInventory
                 // Check if we have enough available quantity
                 if (quantityToRemove > item.QuantityAvailable)
                 {
-                    throw new InvalidOperationException(
+                    return Error.Validation("Quantity", 
                         $"Insufficient available inventory. Available: {item.QuantityAvailable}, Requested to remove: {quantityToRemove}");
                 }
 
@@ -115,24 +116,19 @@ public static class AdjustInventory
     {
         app.MapPost("/api/inventory/adjust", async (
             Command command,
-            IMediator mediator,
+            IMessageBus messageBus,
             IValidator<Command> validator) =>
         {
             var validationResult = await validator.ValidateAsync(command);
             if (!validationResult.IsValid)
                 return Results.ValidationProblem(validationResult.ToDictionary());
 
-            try
-            {
-                var result = await mediator.Send(command);
-                return result is not null 
-                    ? Results.Ok(result) 
-                    : Results.NotFound(new { message = "Inventory item not found" });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.BadRequest(new { message = ex.Message });
-            }
+            var result = await messageBus.InvokeAsync<ErrorOr<Response>>(command);
+            
+            return result.Match(
+                success => Results.Ok(success),
+                errors => MapErrorsToResult(errors)
+            );
         })
         .RequireAuthorization()
         .WithName("AdjustInventory")
@@ -143,5 +139,20 @@ public static class AdjustInventory
         .ProducesValidationProblem();
 
         return app;
+    }
+
+    private static IResult MapErrorsToResult(List<Error> errors)
+    {
+        var firstError = errors.First();
+
+        return firstError.Type switch
+        {
+            ErrorType.Validation => Results.BadRequest(new { message = firstError.Description, errors = errors.Select(e => e.Description) }),
+            ErrorType.NotFound => Results.NotFound(new { message = firstError.Description }),
+            ErrorType.Conflict => Results.Conflict(new { message = firstError.Description }),
+            ErrorType.Unauthorized => Results.Unauthorized(),
+            ErrorType.Forbidden => Results.Forbid(),
+            _ => Results.Problem(firstError.Description, statusCode: 500)
+        };
     }
 }

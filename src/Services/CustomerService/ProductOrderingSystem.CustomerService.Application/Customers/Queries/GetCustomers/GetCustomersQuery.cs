@@ -1,13 +1,12 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CustomerService.Application.Customers.Commands.CreateCustomer;
 using ProductOrderingSystem.CustomerService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CustomerService.Application.Customers.Queries.GetCustomers;
 
-public record GetCustomersQuery(int Skip = 0, int Limit = 100) : IRequest<ErrorOr<GetCustomersResponse>>;
+public record GetCustomersQuery(int Skip = 0, int Limit = 100);
 
-public class GetCustomersQueryHandler : IRequestHandler<GetCustomersQuery, ErrorOr<GetCustomersResponse>>
+public class GetCustomersQueryHandler
 {
     private readonly ICustomerRepository _repository;
 

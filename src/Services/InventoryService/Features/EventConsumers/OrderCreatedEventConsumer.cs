@@ -1,5 +1,5 @@
 using MassTransit;
-using MediatR;
+using Wolverine;
 using ProductOrderingSystem.InventoryService.Features.Inventory;
 using ProductOrderingSystem.Shared.Contracts.Events;
 
@@ -10,14 +10,14 @@ namespace ProductOrderingSystem.InventoryService.Features.EventConsumers;
 /// </summary>
 public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
 {
-    private readonly IMediator _mediator;
+    private readonly IMessageBus _messageBus;
     private readonly ILogger<OrderCreatedEventConsumer> _logger;
 
     public OrderCreatedEventConsumer(
-        IMediator mediator,
+        IMessageBus messageBus,
         ILogger<OrderCreatedEventConsumer> logger)
     {
-        _mediator = mediator;
+        _messageBus = messageBus;
         _logger = logger;
     }
 
@@ -40,7 +40,7 @@ public class OrderCreatedEventConsumer : IConsumer<OrderCreatedEvent>
                     i.Quantity
                 )).ToList() ?? new List<ReserveInventory.ReservationItem>());
 
-            var result = await _mediator.Send(command);
+            var result = await _messageBus.InvokeAsync<ReserveInventory.Result>(command);
 
             if (result.Success)
             {

@@ -3,7 +3,7 @@
 ## Overview
 The Identity Service handles user authentication, authorization, and JWT token management for the microservices architecture. It provides secure user registration, login, and token validation services.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | JWT | BCrypt
+**Technology Stack**: .NET 10.0 | MongoDB | JWT Authentication | BCrypt | Wolverine.net | Aspire
 
 ## Architecture
 
@@ -23,17 +23,14 @@ graph TB
         UserRepo --> Domain
     end
     
-    API --> RabbitMQ[RabbitMQ<br/>Message Broker]
     UserRepo --> MongoDB[(MongoDB<br/>User Database)]
     
     Gateway[API Gateway] --> API
     AllServices[All Services] -.->|Token Validation| API
-    RabbitMQ -.->|User Events| CustomerService[Customer Service]
     
     style API fill:#0078d4,color:#fff
     style Domain fill:#107c10,color:#fff
     style MongoDB fill:#47A248,color:#fff
-    style RabbitMQ fill:#FF6600,color:#fff
 ```
 
 ### Authentication Flow
@@ -45,7 +42,6 @@ sequenceDiagram
     participant UserRepo
     participant MongoDB
     participant TokenService
-    participant RabbitMQ
     
     Client->>IdentityAPI: POST /auth/login
     IdentityAPI->>AuthService: Authenticate(email, password)
@@ -58,7 +54,6 @@ sequenceDiagram
     AuthService->>TokenService: GenerateToken(user)
     TokenService-->>AuthService: JWT Token
     
-    AuthService->>RabbitMQ: Publish UserLoggedInEvent
     AuthService-->>IdentityAPI: LoginResult
     IdentityAPI-->>Client: 200 OK (Token + User Info)
 ```
@@ -71,7 +66,6 @@ sequenceDiagram
     participant AuthService
     participant UserRepo
     participant MongoDB
-    participant RabbitMQ
     
     Client->>IdentityAPI: POST /auth/register
     IdentityAPI->>AuthService: Register(request)
@@ -83,7 +77,6 @@ sequenceDiagram
     UserRepo->>MongoDB: Insert Document
     MongoDB-->>UserRepo: User Created
     
-    AuthService->>RabbitMQ: Publish UserRegisteredEvent
     AuthService-->>IdentityAPI: User + Token
     IdentityAPI-->>Client: 201 Created
 ```
@@ -165,15 +158,31 @@ graph LR
 - **Authentication**: Not required
 - **Note**: Debug endpoint, should be removed in production
 
+## Key Features
+
+### Admin User Seeder
+The Identity Service automatically creates a default admin user on startup if none exists.
+
+**Default Admin Credentials**:
+- Email: `admin@productordering.com`
+- Password: `Admin123!`
+- Role: Admin
+
+**Seeder Behavior**:
+- Runs as a background service on application startup
+- Checks for existing admin user
+- Creates admin only if no admin exists
+- Uses secure password hashing (BCrypt)
+- Logs success/failure
+
+**Note**: Change the default admin password immediately after first deployment to production.
+
 ## Libraries and Packages
 
 ### Core Framework
 - **.NET 10.0**: Latest .NET runtime
 - **ASP.NET Core**: Web API with Minimal APIs
-
-### Messaging
-- **MassTransit**: Message bus abstraction
-- **MassTransit.RabbitMQ**: RabbitMQ transport
+- **Wolverine.net**: Command handling for authentication operations
 
 ### Database
 - **MongoDB.Driver**: Official MongoDB driver
@@ -181,7 +190,7 @@ graph LR
 
 ### Security
 - **Microsoft.AspNetCore.Authentication.JwtBearer**: JWT authentication
-- **BCrypt.Net**: Password hashing and verification
+- **BCrypt.Net**: Password hashing and verification (10 salt rounds)
 - **Microsoft.IdentityModel.Tokens**: Token generation and validation
 - **System.IdentityModel.Tokens.Jwt**: JWT token creation
 
@@ -191,6 +200,8 @@ graph LR
 
 ### .NET Aspire
 - **Aspire ServiceDefaults**: Service configuration
+
+**Note**: Identity Service does not use RabbitMQ or event publishing. It's a standalone authentication service.
 
 ## Domain Model
 
@@ -229,41 +240,6 @@ public enum UserRole
 - **exp**: Token expiration timestamp
 - **iss**: Token issuer
 - **aud**: Token audience
-
-## Integration Events
-
-### Published Events
-1. **UserRegisteredEvent**
-   ```json
-   {
-     "userId": "guid",
-     "email": "string",
-     "firstName": "string",
-     "lastName": "string",
-     "registeredAt": "datetime"
-   }
-   ```
-
-2. **UserLoggedInEvent**
-   ```json
-   {
-     "userId": "guid",
-     "email": "string",
-     "loginAt": "datetime"
-   }
-   ```
-
-3. **UserUpdatedEvent**
-   ```json
-   {
-     "userId": "guid",
-     "email": "string",
-     "updatedAt": "datetime"
-   }
-   ```
-
-### Consumed Events
-- None (Identity Service is typically a provider, not consumer)
 
 ## Security Features
 

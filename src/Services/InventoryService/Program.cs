@@ -8,6 +8,7 @@ using ProductOrderingSystem.InventoryService.Features.EventConsumers;
 using ProductOrderingSystem.InventoryService.Features.Inventory;
 using Scalar.AspNetCore;
 using System.Text;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,10 +18,10 @@ builder.AddServiceDefaults();
 // Add PostgreSQL with EF Core via Aspire
 builder.AddNpgsqlDbContext<InventoryDbContext>("inventorydb");
 
-// Add MediatR for vertical slices
-builder.Services.AddMediatR(cfg =>
+// Configure Wolverine for vertical slices
+builder.Host.UseWolverine(opts =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(Program).Assembly);
 });
 
 // Add FluentValidation

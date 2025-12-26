@@ -1,5 +1,5 @@
+using ErrorOr;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
-using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.Commands.Products
 {
@@ -16,13 +16,14 @@ namespace ProductOrderingSystem.ProductService.Application.Commands.Products
             _productRepository = productRepository;
         }
 
-        public async Task Handle(DeleteProductCommand command, CancellationToken cancellationToken)
+        public async Task<ErrorOr<Success>> Handle(DeleteProductCommand command, CancellationToken cancellationToken)
         {
             var exists = await _productRepository.ExistsAsync(command.Id);
             if (!exists)
-                throw new ProductNotFoundException(command.Id);
+                return Error.NotFound("Product.NotFound", $"Product with ID '{command.Id}' was not found");
 
             await _productRepository.DeleteAsync(command.Id);
+            return Result.Success;
         }
     }
 }

@@ -1,6 +1,5 @@
 using ErrorOr;
 using FluentValidation;
-using MediatR;
 using ProductOrderingSystem.CustomerService.Application.Customers.Commands.CreateCustomer;
 using ProductOrderingSystem.CustomerService.Domain.Repositories;
 using ProductOrderingSystem.CustomerService.Domain.ValueObjects;
@@ -15,7 +14,7 @@ public record AddAddressCommand(
     string PostalCode,
     string Country,
     bool IsDefault,
-    AddressType Type) : IRequest<ErrorOr<CustomerResponse>>;
+    AddressType Type);
 
 public class AddAddressCommandValidator : AbstractValidator<AddAddressCommand>
 {
@@ -30,7 +29,7 @@ public class AddAddressCommandValidator : AbstractValidator<AddAddressCommand>
     }
 }
 
-public class AddAddressCommandHandler : IRequestHandler<AddAddressCommand, ErrorOr<CustomerResponse>>
+public class AddAddressCommandHandler
 {
     private readonly ICustomerRepository _repository;
 

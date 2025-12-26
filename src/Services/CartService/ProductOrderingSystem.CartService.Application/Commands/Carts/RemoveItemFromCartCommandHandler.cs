@@ -1,10 +1,9 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CartService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CartService.Application.Commands.Carts;
 
-public class RemoveItemFromCartCommandHandler : IRequestHandler<RemoveItemFromCartCommand, ErrorOr<Success>>
+public class RemoveItemFromCartCommandHandler
 {
     private readonly ICartRepository _cartRepository;
 

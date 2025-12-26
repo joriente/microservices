@@ -1,4 +1,4 @@
-using MediatR;
+using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
 using ProductOrderingSystem.InventoryService.Models;
@@ -11,7 +11,7 @@ namespace ProductOrderingSystem.InventoryService.Features.Inventory;
 public static class GetAllInventory
 {
     // Query
-    public record Query : IRequest<Response>;
+    public record Query;
 
     // Response
     public record Response(List<InventoryItemDto> Items);
@@ -26,7 +26,7 @@ public static class GetAllInventory
         DateTime LastUpdated);
 
     // Handler
-    public class Handler : IRequestHandler<Query, Response>
+    public class Handler
     {
         private readonly InventoryDbContext _context;
 
@@ -58,9 +58,9 @@ public static class GetAllInventory
     // Endpoint
     public static IEndpointRouteBuilder MapEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/inventory", async (IMediator mediator) =>
+        app.MapGet("/api/inventory", async (IMessageBus messageBus) =>
         {
-            var result = await mediator.Send(new Query());
+            var result = await messageBus.InvokeAsync<Response>(new Query());
             return Results.Ok(result.Items);
         })
         .RequireAuthorization()

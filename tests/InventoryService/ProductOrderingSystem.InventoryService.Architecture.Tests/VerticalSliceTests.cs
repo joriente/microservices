@@ -114,9 +114,11 @@ public class VerticalSliceTests : TestBase
             .ResideInNamespaceContaining("Features")
             .And()
             .HaveNameEndingWith("Handler")
-            .GetTypes();
+            .GetTypes()
+            .Where(t => !t.IsNested) // Exclude Wolverine handlers (nested in static vertical slice classes)
+            .ToList();
 
-        // All handlers should implement IRequestHandler
+        // All non-nested handlers should implement IRequestHandler
         var nonMediatRHandlers = handlerTypes
             .Where(t => !t.GetInterfaces().Any(i => 
                 i.IsGenericType && 

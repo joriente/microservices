@@ -1,5 +1,5 @@
 using ErrorOr;
-using MediatR;
+using Wolverine;
 using ProductOrderingSystem.OrderService.Application.Commands.Orders;
 using ProductOrderingSystem.OrderService.Application.Queries.Orders;
 using ProductOrderingSystem.OrderService.Domain.Entities;
@@ -43,7 +43,7 @@ public static class OrderEndpoints
             .Produces(500);
     }
 
-    private static async Task<IResult> CreateOrder(CreateOrderRequest request, IMediator mediator, HttpContext httpContext, ILogger<Program> logger)
+    private static async Task<IResult> CreateOrder(CreateOrderRequest request, IMessageBus messageBus, HttpContext httpContext, ILogger<Program> logger)
     {
         // Log incoming request details
         logger.LogInformation(
@@ -75,7 +75,7 @@ public static class OrderEndpoints
             request.Notes
         );
 
-        var result = await mediator.Send(command);
+        var result = await messageBus.InvokeAsync<ErrorOr<Order>>(command);
 
         return result.Match(
             order =>
@@ -101,10 +101,10 @@ public static class OrderEndpoints
         );
     }
 
-    private static async Task<IResult> GetOrderById(string id, IMediator mediator)
+    private static async Task<IResult> GetOrderById(string id, IMessageBus messageBus)
     {
         var query = new GetOrderByIdQuery(id);
-        var result = await mediator.Send(query);
+        var result = await messageBus.InvokeAsync<ErrorOr<Order>>(query);
 
         return result.Match(
             order => Results.Ok(MapToDto(order)),
@@ -119,7 +119,7 @@ public static class OrderEndpoints
         DateTime? endDate,
         int page,
         int pageSize,
-        IMediator mediator,
+        IMessageBus messageBus,
         HttpContext httpContext)
     {
         // Convert contract status to domain status
@@ -128,7 +128,7 @@ public static class OrderEndpoints
             : null;
 
         var query = new GetOrdersQuery(customerId, domainStatus, startDate, endDate, page, pageSize);
-        var result = await mediator.Send(query);
+        var result = await messageBus.InvokeAsync<ErrorOr<GetOrdersResult>>(query);
 
         return result.Match(
             queryResult => 

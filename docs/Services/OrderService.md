@@ -3,7 +3,7 @@
 ## Overview
 The Order Service is the core orchestrator for order processing in the microservices architecture. It implements the Saga pattern to coordinate distributed transactions across multiple services (Payment, Inventory, Cart) and handles the entire order lifecycle.
 
-**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | MediatR | Saga Pattern
+**Technology Stack**: .NET 10.0 | MongoDB | MassTransit | RabbitMQ | Wolverine.net | Product Cache | Aspire
 
 ## Architecture
 
@@ -12,7 +12,7 @@ The Order Service is the core orchestrator for order processing in the microserv
 graph TB
     subgraph "Order Service"
         API[Web API<br/>Minimal APIs]
-        Handlers[MediatR Handlers<br/>Commands & Queries]
+        Handlers[Wolverine Handlers<br/>Commands & Queries]
         Saga[Order State Machine<br/>Saga Orchestrator]
         Domain[Domain Layer<br/>Order Aggregate]
         Repository[MongoDB Repository]
@@ -179,7 +179,7 @@ sequenceDiagram
 - **ASP.NET Core**: Web API with Minimal APIs
 
 ### CQRS and Messaging
-- **MediatR**: Command/Query handling
+- **Wolverine.net**: Command/Query handling and message bus
 - **MassTransit**: Message bus and saga orchestration
 - **MassTransit.RabbitMQ**: RabbitMQ transport
 
@@ -200,6 +200,43 @@ sequenceDiagram
 
 ### .NET Aspire
 - **Aspire ServiceDefaults**: Service configuration
+
+## Key Features
+
+### Product Cache Synchronization
+The Order Service maintains a local cache of product information to reduce dependency on the Product Service during order creation. This improves resilience and performance.
+
+**Cache Update Flow**:
+```mermaid
+sequenceDiagram
+    participant ProductService
+    participant RabbitMQ
+    participant OrderService
+    participant ProductCache
+    
+    ProductService->>RabbitMQ: ProductCreatedEvent
+    RabbitMQ->>OrderService: Consume Event
+    OrderService->>ProductCache: Store Product Info
+    
+    ProductService->>RabbitMQ: ProductUpdatedEvent
+    RabbitMQ->>OrderService: Consume Event
+    OrderService->>ProductCache: Update Product Info
+    
+    ProductService->>RabbitMQ: ProductDeletedEvent
+    RabbitMQ->>OrderService: Consume Event
+    OrderService->>ProductCache: Remove Product Info
+```
+
+**Benefits**:
+- Reduced coupling with Product Service
+- Improved order creation performance
+- Resilience to Product Service outages
+- Contains essential product info: name, price, SKU
+
+**Event Consumers**:
+- `ProductCreatedEventConsumer`: Adds new products to cache
+- `ProductUpdatedEventConsumer`: Updates existing product information
+- `ProductDeletedEventConsumer`: Removes deleted products from cache
 
 ## Domain Model
 

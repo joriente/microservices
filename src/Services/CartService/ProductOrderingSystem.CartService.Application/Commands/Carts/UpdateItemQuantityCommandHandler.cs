@@ -1,10 +1,9 @@
 using ErrorOr;
-using MediatR;
 using ProductOrderingSystem.CartService.Domain.Repositories;
 
 namespace ProductOrderingSystem.CartService.Application.Commands.Carts;
 
-public class UpdateItemQuantityCommandHandler : IRequestHandler<UpdateItemQuantityCommand, ErrorOr<Success>>
+public class UpdateItemQuantityCommandHandler
 {
     private readonly ICartRepository _cartRepository;
 

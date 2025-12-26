@@ -4,6 +4,8 @@ using ProductOrderingSystem.AnalyticsService.Infrastructure.Consumers;
 using ProductOrderingSystem.AnalyticsService.Infrastructure.Services;
 using ProductOrderingSystem.AnalyticsService.Application.Interfaces;
 using ProductOrderingSystem.AnalyticsService.WebAPI.Endpoints;
+using Wolverine;
+using ProductOrderingSystem.AnalyticsService.Application.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,10 +14,12 @@ builder.AddServiceDefaults();
 // Add PostgreSQL with Entity Framework Core
 builder.AddNpgsqlDbContext<AnalyticsDbContext>("analyticsdb");
 
-// Add MediatR
-builder.Services.AddMediatR(cfg =>
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(ProductOrderingSystem.AnalyticsService.Infrastructure.Data.AnalyticsDbContext).Assembly);
+    // Auto-discover message handlers
+    opts.Discovery.IncludeAssembly(typeof(GetDailyOrders).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(AnalyticsDbContext).Assembly);
 });
 
 // Add Event Hub Publisher

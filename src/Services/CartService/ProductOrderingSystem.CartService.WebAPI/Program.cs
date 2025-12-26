@@ -1,5 +1,4 @@
 using MassTransit;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
@@ -10,6 +9,7 @@ using ProductOrderingSystem.CartService.Domain.Repositories;
 using ProductOrderingSystem.CartService.Infrastructure.Repositories;
 using ProductOrderingSystem.CartService.WebAPI.Endpoints;
 using System.Text;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,10 +23,11 @@ builder.AddMongoDBClient("cartdb");
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IProductCacheRepository, ProductCacheRepository>();
 
-// Register MediatR
-builder.Services.AddMediatR(cfg =>
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(CreateCartCommand).Assembly);
+    // Auto-discover message handlers
+    opts.Discovery.IncludeAssembly(typeof(CreateCartCommand).Assembly);
 });
 
 // Add JWT Authentication

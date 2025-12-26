@@ -1,11 +1,10 @@
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.AnalyticsService.Application.Queries;
 using ProductOrderingSystem.AnalyticsService.Infrastructure.Data;
 
 namespace ProductOrderingSystem.AnalyticsService.Infrastructure.Queries;
 
-public class GetDailyOrdersHandler : IRequestHandler<GetDailyOrders.Query, List<GetDailyOrders.Result>>
+public class GetDailyOrdersHandler
 {
     private readonly AnalyticsDbContext _context;
 

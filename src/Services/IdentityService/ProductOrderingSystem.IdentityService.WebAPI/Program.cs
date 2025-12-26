@@ -11,6 +11,7 @@ using ProductOrderingSystem.IdentityService.Infrastructure.Services;
 using ProductOrderingSystem.IdentityService.WebAPI.Data;
 using ProductOrderingSystem.IdentityService.WebAPI.Endpoints;
 using Scalar.AspNetCore;
+using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,9 +29,11 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 // Add services to the container
 builder.Services.AddOpenApi();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(RegisterUserCommandHandler).Assembly));
+// Configure Wolverine
+builder.Host.UseWolverine(opts =>
+{
+    opts.Discovery.IncludeAssembly(typeof(RegisterUserCommandHandler).Assembly);
+});
 
 // Add database context
 builder.Services.AddSingleton<IdentityDbContext>();

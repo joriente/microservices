@@ -5,12 +5,14 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ProductOrderingSystem.Shared.Contracts.Orders;
 using Testcontainers.MongoDb;
@@ -42,9 +44,13 @@ public class OrderAuthorizationTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                // Set environment variables BEFORE configuration is built
+                builder.UseEnvironment("Development");
+                
                 builder.ConfigureAppConfiguration((context, config) =>
                 {
                     // Add test configuration - this needs to be set BEFORE services are configured
+                    // These values will override Program.cs defaults
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:messaging"] = "amqp://guest:guest@localhost:5672",
@@ -53,13 +59,17 @@ public class OrderAuthorizationTests : IAsyncLifetime
                         ["Jwt:Issuer"] = Issuer,
                         ["Jwt:Audience"] = Audience,
                         ["Jwt:AccessTokenExpirationMinutes"] = "60"
-                    });
+                    }!);
                 });
 
                 builder.ConfigureServices((context, services) =>
                 {
-                    // Reconfigure JWT Bearer authentication with test settings
-                    services.PostConfigureAll<JwtBearerOptions>(options =>
+                    // Replace MongoDB client with test container connection
+                    services.AddSingleton<MongoDB.Driver.IMongoClient>(sp => 
+                        new MongoDB.Driver.MongoClient(_mongoContainer.GetConnectionString()));
+                        
+                    // Explicitly reconfigure JWT bearer options after Program.cs setup using PostConfigure
+                    services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                     {
                         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
                         options.TokenValidationParameters = new TokenValidationParameters
@@ -73,11 +83,32 @@ public class OrderAuthorizationTests : IAsyncLifetime
                             ValidateLifetime = true,
                             ClockSkew = TimeSpan.Zero
                         };
+                        options.Events = new JwtBearerEvents
+                        {
+                            OnMessageReceived = context =>
+                            {
+                                var authHeader = context.Request.Headers["Authorization"].ToString();
+                                Console.WriteLine($"Authorization header received: {authHeader}");
+                                Console.WriteLine($"Token from context: {context.Token}");
+                                return Task.CompletedTask;
+                            },
+                            OnAuthenticationFailed = context =>
+                            {
+                                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                                Console.WriteLine($"Exception type: {context.Exception.GetType().Name}");
+                                if (context.Exception.InnerException != null)
+                                {
+                                    Console.WriteLine($"Inner exception: {context.Exception.InnerException.Message}");
+                                }
+                                return Task.CompletedTask;
+                            },
+                            OnTokenValidated = context =>
+                            {
+                                Console.WriteLine("Token validated successfully");
+                                return Task.CompletedTask;
+                            }
+                        };
                     });
-
-                    // Replace MongoDB client with test container connection
-                    services.AddSingleton<MongoDB.Driver.IMongoClient>(sp => 
-                        new MongoDB.Driver.MongoClient(_mongoContainer.GetConnectionString()));
                 });
 
                 // Disable EventLog logging to prevent disposal issues in tests
@@ -213,7 +244,12 @@ public class OrderAuthorizationTests : IAsyncLifetime
     {
         // Arrange
         var token = GenerateValidJwtToken("user123", "test@example.com", "testuser");
+        Console.WriteLine($"Generated token: {token}");
+        Console.WriteLine($"Token length: {token.Length}");
+        Console.WriteLine($"Token parts count: {token.Split('.').Length}");
+        
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        Console.WriteLine($"Authorization header set: {_client.DefaultRequestHeaders.Authorization}");
 
         // Act
         var response = await _client.GetAsync("/api/orders?page=1&pageSize=10");
