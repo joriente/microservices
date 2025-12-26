@@ -1,3 +1,4 @@
+using ErrorOr;
 using Wolverine;
 using ProductOrderingSystem.ProductService.Application.Commands.Products;
 using ProductOrderingSystem.ProductService.Application.Queries.Products;
@@ -90,32 +91,38 @@ public static class ProductEndpoints
             request.PageSize
         );
 
-        var searchResult = await messageBus.InvokeAsync<SearchProductsResult>(query);
+        var result = await messageBus.InvokeAsync<ErrorOr<SearchProductsResult>>(query);
 
-        logger.LogInformation(
-            "SearchProducts completed - Found {TotalCount} products, returning page {Page}/{TotalPages}",
-            searchResult.TotalCount,
-            searchResult.Page,
-            (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize)
+        return result.Match(
+            searchResult =>
+            {
+                logger.LogInformation(
+                    "SearchProducts completed - Found {TotalCount} products, returning page {Page}/{TotalPages}",
+                    searchResult.TotalCount,
+                    searchResult.Page,
+                    (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize)
+                );
+
+                // Calculate pagination metadata
+                var totalPages = (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize);
+                var paginationMetadata = new PaginationMetadata(
+                    Page: searchResult.Page,
+                    PageSize: searchResult.PageSize,
+                    TotalCount: searchResult.TotalCount,
+                    TotalPages: totalPages,
+                    HasPrevious: searchResult.Page > 1,
+                    HasNext: searchResult.Page < totalPages
+                );
+
+                // Add pagination metadata to response header as JSON
+                httpContext.Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
+
+                // Return only the products list in the body
+                var products = searchResult.Products.Select(MapToDto).ToList();
+                return Results.Ok(products);
+            },
+            errors => MapErrorsToResult(errors)
         );
-
-        // Calculate pagination metadata
-        var totalPages = (int)Math.Ceiling(searchResult.TotalCount / (double)searchResult.PageSize);
-        var paginationMetadata = new PaginationMetadata(
-            Page: searchResult.Page,
-            PageSize: searchResult.PageSize,
-            TotalCount: searchResult.TotalCount,
-            TotalPages: totalPages,
-            HasPrevious: searchResult.Page > 1,
-            HasNext: searchResult.Page < totalPages
-        );
-
-        // Add pagination metadata to response header as JSON
-        httpContext.Response.Headers["X-Pagination"] = System.Text.Json.JsonSerializer.Serialize(paginationMetadata);
-
-        // Return only the products list in the body
-        var products = searchResult.Products.Select(MapToDto).ToList();
-        return Results.Ok(products);
     }
 
     private static async Task<IResult> GetProductById(string id, IMessageBus messageBus, ILogger<Program> logger, HttpContext httpContext)
@@ -125,13 +132,18 @@ public static class ProductEndpoints
             httpContext.Connection.RemoteIpAddress);
 
         var query = new GetProductByIdQuery(id);
-        var product = await messageBus.InvokeAsync<Product>(query);
+        var result = await messageBus.InvokeAsync<ErrorOr<Product>>(query);
 
-        logger.LogInformation("GetProductById completed - ProductId: {ProductId}, ProductName: {ProductName}", 
-            id, 
-            product.Name);
-
-        return Results.Ok(MapToDto(product));
+        return result.Match(
+            product =>
+            {
+                logger.LogInformation("GetProductById completed - ProductId: {ProductId}, ProductName: {ProductName}", 
+                    id, 
+                    product.Name);
+                return Results.Ok(MapToDto(product));
+            },
+            errors => MapErrorsToResult(errors)
+        );
     }
 
     private static async Task<IResult> CreateProduct(CreateProductRequest request, IMessageBus messageBus, HttpContext httpContext, ILogger<Program> logger)
@@ -154,16 +166,22 @@ public static class ProductEndpoints
             request.ImageUrl
         );
 
-        var product = await messageBus.InvokeAsync<Product>(command);
+        var result = await messageBus.InvokeAsync<ErrorOr<Product>>(command);
 
-        logger.LogInformation("CreateProduct completed - ProductId: {ProductId}, Name: {Name}", 
-            product.Id, 
-            product.Name);
+        return result.Match(
+            product =>
+            {
+                logger.LogInformation("CreateProduct completed - ProductId: {ProductId}, Name: {Name}", 
+                    product.Id, 
+                    product.Name);
 
-        // Follow REST principles: 201 Created with Location header, empty body
-        var locationUri = $"/api/products/{product.Id}";
-        httpContext.Response.Headers.Location = locationUri;
-        return Results.StatusCode(201); // 201 Created with no body
+                // Follow REST principles: 201 Created with Location header, empty body
+                var locationUri = $"/api/products/{product.Id}";
+                httpContext.Response.Headers.Location = locationUri;
+                return Results.StatusCode(201); // 201 Created with no body
+            },
+            errors => MapErrorsToResult(errors)
+        );
     }
 
     private static async Task<IResult> UpdateProduct(string id, UpdateProductRequest request, IMessageBus messageBus, ILogger<Program> logger, HttpContext httpContext)
@@ -192,12 +210,18 @@ public static class ProductEndpoints
             request.ImageUrl
         );
 
-        var product = await messageBus.InvokeAsync<Product>(command);
+        var result = await messageBus.InvokeAsync<ErrorOr<Product>>(command);
 
-        logger.LogInformation("UpdateProduct completed - ProductId: {ProductId}, Name: {Name}", 
-            product.Id, 
-            product.Name);
-        return Results.Ok(MapToDto(product));
+        return result.Match(
+            product =>
+            {
+                logger.LogInformation("UpdateProduct completed - ProductId: {ProductId}, Name: {Name}", 
+                    product.Id, 
+                    product.Name);
+                return Results.Ok(MapToDto(product));
+            },
+            errors => MapErrorsToResult(errors)
+        );
     }
 
     private static async Task<IResult> DeleteProduct(string id, IMessageBus messageBus, ILogger<Program> logger, HttpContext httpContext)
@@ -207,10 +231,16 @@ public static class ProductEndpoints
             httpContext.Connection.RemoteIpAddress);
 
         var command = new DeleteProductCommand(id);
-        await messageBus.InvokeAsync(command);
+        var result = await messageBus.InvokeAsync<ErrorOr<Success>>(command);
         
-        logger.LogInformation("DeleteProduct completed - ProductId: {ProductId}", id);
-        return Results.NoContent();
+        return result.Match(
+            _ =>
+            {
+                logger.LogInformation("DeleteProduct completed - ProductId: {ProductId}", id);
+                return Results.NoContent();
+            },
+            errors => MapErrorsToResult(errors)
+        );
     }
 
     private static async Task<IResult> SyncProductCache(IMessageBus messageBus, ILogger<Program> logger)
@@ -227,33 +257,42 @@ public static class ProductEndpoints
             PageSize: 10000 // Get all products
         );
         
-        var result = await messageBus.InvokeAsync<SearchProductsResult>(query);
+        var queryResult = await messageBus.InvokeAsync<ErrorOr<SearchProductsResult>>(query);
         
-        var products = result.Products;
+        if (queryResult.IsError)
+        {
+            logger.LogError("SyncProductCache failed - Unable to retrieve products: {@Errors}", 
+                queryResult.Errors.Select(e => new { e.Type, e.Description }));
+            return MapErrorsToResult(queryResult.Errors);
+        }
+
+        var products = queryResult.Value.Products;
         var publishedCount = 0;
 
         // Use the domain event system to republish events
         foreach (var product in products)
         {
-            try
+            var updateCommand = new UpdateProductCommand(
+                product.Id,
+                product.Name,
+                product.Description,
+                product.Price,
+                product.StockQuantity,
+                product.Category,
+                product.ImageUrl
+            );
+            
+            var updateResult = await messageBus.InvokeAsync<ErrorOr<Product>>(updateCommand);
+            
+            if (updateResult.IsError)
             {
-                // Create a command to trigger the product update which will publish events
-                var updateCommand = new UpdateProductCommand(
-                    product.Id,
-                    product.Name,
-                    product.Description,
-                    product.Price,
-                    product.StockQuantity,
-                    product.Category,
-                    product.ImageUrl
-                );
-                
-                await messageBus.InvokeAsync(updateCommand);
-                publishedCount++;
+                logger.LogWarning("Failed to republish event for product {ProductId}: {@Errors}", 
+                    product.Id, 
+                    updateResult.Errors.Select(e => new { e.Type, e.Description }));
             }
-            catch (Exception ex)
+            else
             {
-                logger.LogWarning(ex, "Failed to republish event for product {ProductId}", product.Id);
+                publishedCount++;
             }
         }
 
@@ -262,6 +301,20 @@ public static class ProductEndpoints
     }
 
     // Helper methods
+    private static IResult MapErrorsToResult(List<Error> errors)
+    {
+        var firstError = errors.First();
+
+        return firstError.Type switch
+        {
+            ErrorType.Validation => Results.BadRequest(new { message = firstError.Description, errors = errors.Select(e => e.Description) }),
+            ErrorType.NotFound => Results.NotFound(new { message = firstError.Description }),
+            ErrorType.Conflict => Results.Conflict(new { message = firstError.Description }),
+            ErrorType.Unauthorized => Results.Unauthorized(),
+            ErrorType.Forbidden => Results.Forbid(),
+            _ => Results.Problem(firstError.Description, statusCode: 500)
+        };
+    }
     private static ProductDto MapToDto(Product product)
     {
         return new ProductDto(

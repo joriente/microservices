@@ -1,6 +1,6 @@
+using ErrorOr;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
-using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.Commands.Products
 {
@@ -25,29 +25,29 @@ namespace ProductOrderingSystem.ProductService.Application.Commands.Products
             _productRepository = productRepository;
         }
 
-        public async Task<Product> Handle(UpdateProductCommand command, CancellationToken cancellationToken)
+        public async Task<ErrorOr<Product>> Handle(UpdateProductCommand command, CancellationToken cancellationToken)
         {
-            // Validate input - throw exceptions for validation errors
-            var errors = new Dictionary<string, string[]>();
+            // Validate input - return errors instead of throwing
+            var errors = new List<Error>();
             
             if (string.IsNullOrWhiteSpace(command.Id))
-                errors["Id"] = new[] { "Product ID is required" };
+                errors.Add(Error.Validation("Id", "Product ID is required"));
             
             if (string.IsNullOrWhiteSpace(command.Name))
-                errors["Name"] = new[] { "Product name is required" };
+                errors.Add(Error.Validation("Name", "Product name is required"));
             
             if (command.Price <= 0)
-                errors["Price"] = new[] { "Product price must be greater than zero" };
+                errors.Add(Error.Validation("Price", "Product price must be greater than zero"));
             
             if (command.StockQuantity < 0)
-                errors["StockQuantity"] = new[] { "Stock quantity cannot be negative" };
+                errors.Add(Error.Validation("StockQuantity", "Stock quantity cannot be negative"));
 
             if (errors.Any())
-                throw new ProductValidationException(errors);
+                return errors;
 
             var product = await _productRepository.GetByIdAsync(command.Id);
             if (product == null)
-                throw new ProductNotFoundException(command.Id);
+                return Error.NotFound("Product.NotFound", $"Product with ID '{command.Id}' was not found");
 
             product.UpdateProduct(
                 command.Name,

@@ -64,7 +64,7 @@ public static class PaymentEndpoints
         // But we can expose it for testing purposes
         group.MapPost("/process", async (
             ProcessPaymentRequest request,
-            IMediator mediator) =>
+            IMessageBus messageBus) =>
         {
             var command = new ProcessPaymentCommand(
                 request.OrderId,
@@ -72,7 +72,7 @@ public static class PaymentEndpoints
                 request.Amount,
                 request.Currency);
             
-            var result = await mediator.Send(command);
+            var result = await messageBus.InvokeAsync<ErrorOr<PaymentDto>>(command);
 
             return result.Match(
                 payment => Results.Ok(payment),

@@ -1,6 +1,6 @@
+using ErrorOr;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
-using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.Queries.Products
 {
@@ -17,13 +17,13 @@ namespace ProductOrderingSystem.ProductService.Application.Queries.Products
             _productRepository = productRepository;
         }
 
-        public async Task<Product> Handle(GetProductByIdQuery query, CancellationToken cancellationToken)
+        public async Task<ErrorOr<Product>> Handle(GetProductByIdQuery query, CancellationToken cancellationToken)
         {
             var product = await _productRepository.GetByIdAsync(query.Id);
             
             if (product == null)
             {
-                throw new ProductNotFoundException(query.Id);
+                return Error.NotFound("Product.NotFound", $"Product with ID '{query.Id}' was not found");
             }
             
             return product;

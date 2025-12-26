@@ -1,6 +1,8 @@
 using Wolverine;
 using ProductOrderingSystem.IdentityService.Application.Commands.Auth;
 using ProductOrderingSystem.IdentityService.Domain.Repositories;
+using ProductOrderingSystem.Shared.Contracts.Identity;
+using ErrorOr;
 
 namespace ProductOrderingSystem.IdentityService.WebAPI.Data;
 
@@ -93,7 +95,7 @@ public class AdminUserSeeder : BackgroundService
                         LastName: "Hopper"
                     );
 
-                    var shopperResult = await mediator.Send(shopperCommand, stoppingToken);
+                    var shopperResult = await messageBus.InvokeAsync<ErrorOr<UserDto>>(shopperCommand);
 
                     if (shopperResult.IsError)
                     {

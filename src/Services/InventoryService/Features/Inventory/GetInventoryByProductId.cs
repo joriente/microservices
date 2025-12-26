@@ -1,3 +1,4 @@
+using ErrorOr;
 using Wolverine;
 using Microsoft.EntityFrameworkCore;
 using ProductOrderingSystem.InventoryService.Data;
@@ -36,13 +37,13 @@ public static class GetInventoryByProductId
             _context = context;
         }
 
-        public async Task<Response?> Handle(Query request, CancellationToken cancellationToken)
+        public async Task<ErrorOr<Response>> Handle(Query request, CancellationToken cancellationToken)
         {
             var item = await _context.InventoryItems
                 .FirstOrDefaultAsync(x => x.ProductId == request.ProductId, cancellationToken);
 
             if (item == null)
-                return null;
+                return Error.NotFound("InventoryItem.NotFound", $"Inventory item not found for product {request.ProductId}");
 
             return new Response(
                 item.Id,
@@ -65,8 +66,11 @@ public static class GetInventoryByProductId
             Guid productId,
             IMessageBus messageBus) =>
         {
-            var result = await messageBus.InvokeAsync<Response?>(new Query(productId));
-            return result is not null ? Results.Ok(result) : Results.NotFound();
+            var result = await messageBus.InvokeAsync<ErrorOr<Response>>(new Query(productId));
+            return result.Match(
+                success => Results.Ok(success),
+                errors => MapErrorsToResult(errors)
+            );
         })
         .WithName("GetInventoryByProductId")
         .WithTags("Inventory")
@@ -74,5 +78,20 @@ public static class GetInventoryByProductId
         .Produces(404);
 
         return app;
+    }
+
+    private static IResult MapErrorsToResult(List<Error> errors)
+    {
+        var firstError = errors.First();
+
+        return firstError.Type switch
+        {
+            ErrorType.Validation => Results.BadRequest(new { message = firstError.Description, errors = errors.Select(e => e.Description) }),
+            ErrorType.NotFound => Results.NotFound(new { message = firstError.Description }),
+            ErrorType.Conflict => Results.Conflict(new { message = firstError.Description }),
+            ErrorType.Unauthorized => Results.Unauthorized(),
+            ErrorType.Forbidden => Results.Forbid(),
+            _ => Results.Problem(firstError.Description, statusCode: 500)
+        };
     }
 }

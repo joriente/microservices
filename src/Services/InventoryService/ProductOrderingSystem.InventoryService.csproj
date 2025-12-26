@@ -19,6 +19,9 @@
     <!-- WolverineFx for Vertical Slices -->
     <PackageReference Include="WolverineFx" />
     
+    <!-- ErrorOr for functional error handling -->
+    <PackageReference Include="ErrorOr" />
+    
     <!-- FluentValidation -->
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />

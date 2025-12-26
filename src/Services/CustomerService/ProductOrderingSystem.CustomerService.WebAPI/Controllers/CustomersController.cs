@@ -79,7 +79,7 @@ public class CustomersController : ControllerBase
         var result = await _messageBus.InvokeAsync<ErrorOr.ErrorOr<CustomerResponse>>(command);
 
         return result.Match(
-            success => CreatedAtAction(nameof(GetById), new { id = success.Id }, null), // Return 201 + Location header + empty body
+            success => CreatedAtAction(nameof(GetById), new { id = success.Id }, success), // Return 201 + Location header + customer in body
             errors => Problem(errors));
     }
 
