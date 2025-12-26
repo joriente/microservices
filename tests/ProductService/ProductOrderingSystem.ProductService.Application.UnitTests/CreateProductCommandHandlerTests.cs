@@ -1,9 +1,9 @@
 using AwesomeAssertions;
+using ErrorOr;
 using Moq;
 using ProductOrderingSystem.ProductService.Application.Commands.Products;
 using ProductOrderingSystem.ProductService.Domain.Entities;
 using ProductOrderingSystem.ProductService.Domain.Repositories;
-using ProductOrderingSystem.ProductService.Domain.Exceptions;
 
 namespace ProductOrderingSystem.ProductService.Application.UnitTests;
 
@@ -48,14 +48,14 @@ public class CreateProductCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Name.Should().Be(command.Name);
-        result.Description.Should().Be(command.Description);
-        result.Price.Should().Be(command.Price);
-        result.StockQuantity.Should().Be(command.StockQuantity);
-        result.Category.Should().Be(command.Category);
-        result.ImageUrl.Should().Be(command.ImageUrl);
-        result.IsActive.Should().BeTrue();
+        result.IsError.Should().BeFalse();
+        result.Value.Name.Should().Be(command.Name);
+        result.Value.Description.Should().Be(command.Description);
+        result.Value.Price.Should().Be(command.Price);
+        result.Value.StockQuantity.Should().Be(command.StockQuantity);
+        result.Value.Category.Should().Be(command.Category);
+        result.Value.ImageUrl.Should().Be(command.ImageUrl);
+        result.Value.IsActive.Should().BeTrue();
 
         _mockRepository.Verify(x => x.CreateAsync(It.IsAny<Product>()), Times.Once);
     }
@@ -83,6 +83,7 @@ public class CreateProductCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
+        result.IsError.Should().BeFalse();
         capturedProduct.Should().NotBeNull();
         capturedProduct!.Name.Should().Be(command.Name);
         capturedProduct.Description.Should().Be(command.Description);
@@ -105,12 +106,14 @@ public class CreateProductCommandHandlerTests
             "https://example.com/image.jpg"
         );
 
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ProductValidationException>(
-            () => _handler.Handle(command, CancellationToken.None));
-        
-        exception.Errors.Should().ContainKey("Price");
-        exception.Errors["Price"].Should().Contain("Product price must be greater than zero");
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.Validation);
+        result.FirstError.Code.Should().Be("Price");
+        result.FirstError.Description.Should().Contain("Product price must be greater than zero");
     }
 
     [Fact]
@@ -126,11 +129,13 @@ public class CreateProductCommandHandlerTests
             "https://example.com/image.jpg"
         );
 
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ProductValidationException>(
-            () => _handler.Handle(command, CancellationToken.None));
-        
-        exception.Errors.Should().ContainKey("StockQuantity");
-        exception.Errors["StockQuantity"].Should().Contain("Stock quantity cannot be negative");
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.Validation);
+        result.FirstError.Code.Should().Be("StockQuantity");
+        result.FirstError.Description.Should().Contain("Stock quantity cannot be negative");
     }
 }
