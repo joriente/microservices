@@ -370,17 +370,18 @@ All exceptions are caught by the `GlobalExceptionHandler` middleware and convert
 ### Recent Changes (December 2025)
 - ✅ **Migrated from MediatR to Wolverine.NET** for CQRS
 - ✅ **Migrated from MassTransit to Wolverine.RabbitMQ** for messaging
-- ✅ **Replaced ErrorOr with exception-based error handling**
+- ✅ **Uses ErrorOr pattern** for functional error handling in handlers
 - ✅ **Added global exception handler** for consistent error responses
-- ✅ **Simplified handler patterns** - no interface requirements
+- ✅ **Simplified handler patterns** - convention-based, no interface requirements
 - ✅ **Removed FluentValidation dependency** - using custom validation exceptions
 
 ### Benefits of Wolverine.NET
 - Less boilerplate code
 - Better performance
 - Unified messaging (in-process + distributed)
-- Convention-based handlers
+- Convention-based handlers (no interface requirements)
 - Built-in validation and error handling
+- ErrorOr pattern for functional error handling without exceptions
 
 ## Development
 

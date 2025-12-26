@@ -204,6 +204,128 @@ public async Task CreateOrder_Should_PublishOrderCreatedEvent()
 }
 ```
 
+## Testing ErrorOr Patterns
+
+### Success Path Testing
+
+When testing handlers that return `ErrorOr<T>`, verify both the result type and value:
+
+```csharp
+[Fact]
+public async Task GetProductById_Should_ReturnProduct_WhenExists()
+{
+    // Arrange
+    var productId = Guid.NewGuid();
+    var expectedProduct = new Product { Id = productId, Name = "Test" };
+    _repository.GetByIdAsync(productId).Returns(expectedProduct);
+    
+    // Act
+    var result = await _handler.Handle(new GetProductByIdQuery(productId));
+    
+    // Assert
+    result.IsError.Should().BeFalse();
+    result.Value.Should().NotBeNull();
+    result.Value.Id.Should().Be(productId);
+    result.Value.Name.Should().Be("Test");
+}
+```
+
+### Error Path Testing
+
+Verify error cases using `ErrorType` and error codes:
+
+```csharp
+[Fact]
+public async Task GetProductById_Should_ReturnNotFound_WhenProductDoesNotExist()
+{
+    // Arrange
+    var productId = Guid.NewGuid();
+    _repository.GetByIdAsync(productId).Returns((Product?)null);
+    
+    // Act
+    var result = await _handler.Handle(new GetProductByIdQuery(productId));
+    
+    // Assert
+    result.IsError.Should().BeTrue();
+    result.FirstError.Type.Should().Be(ErrorType.NotFound);
+    result.FirstError.Code.Should().Contain("Product");
+}
+```
+
+### Validation Error Testing
+
+```csharp
+[Fact]
+public async Task CreateProduct_Should_ReturnValidationError_WhenPriceIsNegative()
+{
+    // Arrange
+    var command = new CreateProductCommand { Price = -10m };
+    
+    // Act
+    var result = await _handler.Handle(command);
+    
+    // Assert
+    result.IsError.Should().BeTrue();
+    result.FirstError.Type.Should().Be(ErrorType.Validation);
+    result.FirstError.Code.Should().Be("Price");
+    result.FirstError.Description.Should().Contain("must be positive");
+}
+```
+
+## Architecture Testing
+
+### Testing Handler Patterns
+
+Architecture tests ensure consistency across the codebase. Use NetArchTest to validate handler patterns:
+
+```csharp
+[Test]
+public void Handlers_ShouldImplementMediatRInterface()
+{
+    // Get all handler types, excluding Wolverine nested handlers
+    var handlerTypes = Types.InAssembly(InventoryServiceAssembly)
+        .That()
+        .ResideInNamespaceContaining("Features")
+        .And()
+        .HaveNameEndingWith("Handler")
+        .GetTypes()
+        .Where(t => !t.IsNested)  // Exclude Wolverine convention-based handlers
+        .ToList();
+    
+    // Verify standalone handlers implement MediatR interfaces
+    var nonMediatRHandlers = handlerTypes
+        .Where(t => !t.GetInterfaces().Any(i => 
+            i.IsGenericType && 
+            i.GetGenericTypeDefinition().Name.Contains("IRequestHandler")))
+        .ToList();
+    
+    nonMediatRHandlers.Should().BeEmpty(
+        "all standalone Handler classes should implement IRequestHandler");
+}
+```
+
+**Key Distinctions:**
+- **MediatR Handlers**: Standalone classes, must implement `IRequestHandler<TRequest, TResponse>`
+- **Wolverine Handlers**: Nested within static feature classes, use convention-based `Handle` methods
+- **Architecture Test Filter**: Use `Type.IsNested` property to distinguish between patterns
+
+### Testing Vertical Slice Organization
+
+```csharp
+[Test]
+public void VerticalSlices_ShouldBeInFeaturesNamespace()
+{
+    var result = Types.InAssembly(Assembly)
+        .That()
+        .HaveNameEndingWith("Handler")
+        .Should()
+        .ResideInNamespaceContaining("Features")
+        .GetResult();
+    
+    result.IsSuccessful.Should().BeTrue();
+}
+```
+
 ## NotificationService Testing
 
 ### Health Check

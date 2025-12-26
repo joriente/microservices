@@ -348,6 +348,12 @@ public static class ReserveInventory
 - **Discoverability**: Clear feature boundaries
 - **Maintainability**: Changes localized to one file
 
+### Handler Architecture Notes
+- **Wolverine Handlers**: Nested classes within static feature slices (convention-based)
+- **MediatR Handlers**: Standalone classes implementing IRequestHandler (interface-based)
+- **Architecture Tests**: Use `Type.IsNested` to distinguish between handler types
+- **ErrorOr Pattern**: Handlers return `ErrorOr<T>` for functional error handling
+
 ## Database Schema
 
 ### Tables
